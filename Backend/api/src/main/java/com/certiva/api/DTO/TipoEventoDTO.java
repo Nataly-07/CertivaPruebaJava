@@ -1,0 +1,21 @@
+package com.certiva.api.DTO;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class TipoEventoDTO {
+
+    private Long idTipoEvento;
+
+    private String nombre;
+
+    private String descripcion;
+
+    private Boolean tieneEvaluacion;
+
+    private Boolean tieneGanador;
+}

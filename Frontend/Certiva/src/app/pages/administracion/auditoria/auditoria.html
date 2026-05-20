@@ -1,0 +1,38 @@
+<div class="audit-page">
+  <div class="audit-header">
+    <h1>Auditoría del sistema</h1>
+    <a routerLink="/admin/dashboard" class="btn btn-dark-outline btn-sm">← Dashboard</a>
+  </div>
+
+  @if (loading) {
+    <p class="text-muted">Cargando…</p>
+  }
+  @if (errorMessage) {
+    <div class="alert alert-danger">{{ errorMessage }}</div>
+  }
+
+  @if (!loading && registros.length > 0) {
+    <div class="table-responsive">
+      <table class="table table-dark table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Acción</th>
+            <th>Descripción</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of registros; track r.idAuditoria) {
+            <tr>
+              <td>{{ r.fecha | date: 'short' }}</td>
+              <td>{{ r.accion }}</td>
+              <td>{{ r.descripcion }}</td>
+              <td>{{ r.ip }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

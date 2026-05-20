@@ -1,0 +1,55 @@
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.users {
+    background: rgba(124, 58, 237, 0.18);
+    color: #c4b5fd;
+  }
+  &.calendar {
+    background: rgba(20, 184, 166, 0.18);
+    color: #5eead4;
+  }
+  &.clipboard {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+  }
+  &.award {
+    background: rgba(249, 115, 22, 0.18);
+    color: #fdba74;
+  }
+}
+
+.kpi-value {
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+
+  &.tone-purple {
+    color: #c4b5fd;
+  }
+  &.tone-teal {
+    color: #5eead4;
+  }
+  &.tone-blue {
+    color: #93c5fd;
+  }
+  &.tone-orange {
+    color: #fdba74;
+  }
+}
+
+.kpi-label {
+  font-size: 0.82rem;
+}
+
+.kpi-trend {
+  color: var(--text-muted);
+  font-weight: 500;
+}

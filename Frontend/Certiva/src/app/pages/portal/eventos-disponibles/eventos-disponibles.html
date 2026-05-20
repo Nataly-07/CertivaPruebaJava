@@ -1,0 +1,139 @@
+<div class="catalogo-v2 slide-container">
+  <section class="hero-banner" [style.backgroundImage]="'url(' + heroImage + ')'">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <span class="hero-badge">ECOSISTEMA CERTIVA</span>
+      <h1 class="hero-title">Expande tus Límites de Conocimiento</h1>
+      <p class="hero-slogan">
+        Aprende, compite y certifícate en los eventos tecnológicos más importantes.
+        <strong>Tu futuro digital empieza hoy.</strong>
+      </p>
+    </div>
+  </section>
+
+  <div class="catalogo-body">
+    @if (authService.isLoggedIn()) {
+      <a routerLink="/portal" class="back-link">← Volver al portal</a>
+    }
+
+    <div class="filter-headline filter-bar">
+      <label class="search-wrap search-input-wrapper">
+        <i class="bi bi-search"></i>
+        <input
+          type="search"
+          class="search-input"
+          placeholder="Buscar eventos activos..."
+          (input)="onBuscar($event)"
+        />
+      </label>
+      <div class="filter-chips chips" role="tablist">
+        @for (chip of chips; track chip.id) {
+          <button
+            type="button"
+            class="chip"
+            [class.chip--active]="tipoSeleccionado === chip.id"
+            (click)="filtrarPorTipo(chip.id)"
+          >
+            {{ chip.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (errorMsg) {
+      <div class="alert alert-warning py-2 px-3 mb-3">{{ errorMsg }}</div>
+    }
+
+    @if (loading) {
+      <p class="state-msg">Cargando catálogo…</p>
+    } @else if (!eventosMostrados.length) {
+      <p class="state-msg">No hay eventos que coincidan con tu búsqueda o filtros.</p>
+    } @else {
+      <div class="events-catalog-grid event-grid">
+        @for (evento of eventosMostrados; track evento.idEvento) {
+          <article class="event-card" [ngClass]="claseTagTipo(evento.tipoEvento)">
+            <div class="card-top-tags">
+              <span class="tag-label" [ngClass]="claseTagTipo(evento.tipoEvento)">
+                {{ evento.area }} • {{ etiquetaTipo(evento.tipoEvento) }}
+              </span>
+              <div class="right-tags">
+                @if (evento.gratuito) {
+                  <span class="badge-free">Gratuito</span>
+                } @else {
+                  <span class="badge-price">{{ evento.precio | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                }
+                @if (esEstudiante()) {
+                  <button
+                    type="button"
+                    class="bookmark-btn"
+                    [class.bookmark-btn--on]="esFavorito(evento.idEvento)"
+                    (click)="toggleFavorito(evento, $event)"
+                    [attr.aria-label]="esFavorito(evento.idEvento) ? 'Quitar favorito' : 'Guardar favorito'"
+                  >
+                    <i
+                      class="bi"
+                      [class.bi-bookmark-fill]="esFavorito(evento.idEvento)"
+                      [class.bi-bookmark]="!esFavorito(evento.idEvento)"
+                    ></i>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <h3 class="event-main-title">{{ evento.nombreEvento }}</h3>
+            @if (evento.descripcion) {
+              <p class="event-description">{{ evento.descripcion }}</p>
+            }
+
+            <div class="event-meta-info">
+              <div class="meta-item">
+                <i class="bi bi-calendar3"></i>
+                <span>{{ evento.fechaInicio | date: "d 'de' MMMM" : '' : 'es' }}</span>
+              </div>
+              <div class="meta-item">
+                <i class="bi bi-geo-alt"></i>
+                <span>{{ ubicacionTexto(evento) }} ({{ etiquetaMod(evento.modalidad) }})</span>
+              </div>
+            </div>
+
+            @if (evento.aforoMaximo) {
+              <div class="capacity-progress">
+                <div class="capacity-text">
+                  <span>Cupos ocupados</span>
+                  <span>{{ calcularPorcentaje(evento.inscritosActivos, evento.aforoMaximo) }}%</span>
+                </div>
+                <div class="bar-bg">
+                  <div
+                    class="bar-fill"
+                    [ngClass]="claseBarraTipo(evento.tipoEvento)"
+                    [style.width.%]="calcularPorcentaje(evento.inscritosActivos, evento.aforoMaximo)"
+                  ></div>
+                </div>
+              </div>
+            }
+
+            <div class="card-footer-action">
+              <div class="instructor-profile">
+                <span class="avatar-mock">{{ instructorIniciales(evento) }}</span>
+                <div class="instructor-info">
+                  <h5>{{ instructorNombre(evento) }}</h5>
+                  <span>{{ evento.instructorRolEtiqueta || 'Instructor' }}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn-enroll"
+                [class.btn-enroll--done]="yaInscrito(evento.idEvento)"
+                [disabled]="!puedeInscribirse(evento)"
+                (click)="inscribirse(evento)"
+              >
+                {{ textoBotonInscripcion(evento) }}
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</div>

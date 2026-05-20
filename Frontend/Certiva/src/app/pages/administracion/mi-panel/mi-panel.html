@@ -1,0 +1,89 @@
+<div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <span class="logo-text">Certiva</span>
+      </div>
+      <button type="button" class="sidebar-toggle" (click)="toggleSidebar()">☰</button>
+    </div>
+    <nav class="sidebar-nav">
+      <a routerLink="/admin/mi-panel" routerLinkActive="active" class="nav-item">
+        @if (!sidebarCollapsed) { <span>Mi panel</span> } @else { <span>◆</span> }
+      </a>
+      <a routerLink="/admin/eventos" routerLinkActive="active" class="nav-item">
+        @if (!sidebarCollapsed) { <span>Eventos</span> }
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button type="button" class="btn btn-dark-outline btn-sm w-100" (click)="logout()">Salir</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="page-header">
+      <div>
+        <h1>Panel del profesor</h1>
+        <p class="text-secondary">Sus eventos creados y métricas de alumnos inscritos</p>
+      </div>
+    </header>
+
+    @if (loading()) {
+      <p class="text-secondary">Cargando métricas…</p>
+    } @else if (errorMsg()) {
+      <div class="alert alert-warning">{{ errorMsg() }}</div>
+    } @else if (panel(); as p) {
+      <div class="stats-row">
+        <div class="stat-card glass-card">
+          <span class="stat-label">Eventos creados</span>
+          <span class="stat-value">{{ p.totalEventos }}</span>
+        </div>
+        <div class="stat-card glass-card">
+          <span class="stat-label">Alumnos inscritos</span>
+          <span class="stat-value">{{ p.totalInscritos }}</span>
+        </div>
+        <div class="stat-card glass-card">
+          <span class="stat-label">Eventos activos</span>
+          <span class="stat-value">{{ p.eventosActivos }}</span>
+        </div>
+      </div>
+
+      <section class="glass-card table-section mt-4">
+        <h2 class="h5 mb-3">Mis eventos</h2>
+        @if (p.eventos.length === 0) {
+          <p class="text-secondary">Aún no ha creado eventos. Vaya a <a routerLink="/admin/eventos">Eventos</a> para publicar uno.</p>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Tipo</th>
+                  <th>Inscritos</th>
+                  <th>Inicio</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (ev of p.eventos; track ev.idEvento) {
+                  <tr>
+                    <td>{{ ev.nombreEvento }}</td>
+                    <td>{{ etiquetaTipo(ev.tipoEvento) }}</td>
+                    <td>{{ ev.inscritos }}</td>
+                    <td>{{ ev.fechaInicio | date: 'short' }}</td>
+                    <td>
+                      @if (ev.activo) {
+                        <span class="badge bg-success-subtle text-success">Activo</span>
+                      } @else {
+                        <span class="badge bg-secondary">Programado / finalizado</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>

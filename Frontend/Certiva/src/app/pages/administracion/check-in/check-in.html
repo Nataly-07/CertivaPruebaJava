@@ -1,0 +1,40 @@
+<div class="checkin-wrap">
+  <div class="checkin-card glass-card">
+    <a routerLink="/admin/eventos" class="back-link">← Volver al panel</a>
+    <h1 class="checkin-title">Check-in por QR</h1>
+    <p class="checkin-lead">Escanea o pega el token QR de la inscripción para confirmar asistencia.</p>
+
+    <div class="mb-3">
+      <label class="form-label-dark" for="codigoQr">Código QR / token</label>
+      <input
+        id="codigoQr"
+        type="text"
+        class="form-control form-control-dark"
+        [(ngModel)]="codigoQr"
+        (keyup.enter)="confirmar()"
+        placeholder="UUID del QR"
+        autocomplete="off"
+      />
+    </div>
+
+    @if (errorMessage) {
+      <div class="alert alert-danger py-2">{{ errorMessage }}</div>
+    }
+
+    @if (resultado) {
+      <div class="alert alert-success py-2">
+        <strong>{{ resultado.mensaje }}</strong>
+        @if (resultado.estadoInscripcion) {
+          <div>Estado: {{ resultado.estadoInscripcion }}</div>
+        }
+        @if (resultado.codigoCertificado) {
+          <div class="small mt-1">Certificado: {{ resultado.codigoCertificado }}</div>
+        }
+      </div>
+    }
+
+    <button type="button" class="btn btn-gradient w-100" [disabled]="loading" (click)="confirmar()">
+      {{ loading ? 'Procesando…' : 'Confirmar asistencia' }}
+    </button>
+  </div>
+</div>

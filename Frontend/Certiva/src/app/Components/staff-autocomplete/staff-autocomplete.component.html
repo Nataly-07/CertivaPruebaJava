@@ -1,0 +1,36 @@
+<div class="staff-ac">
+  <label class="form-label-dark">{{ titulo }}</label>
+  <p class="staff-ac-hint">{{ hint }}</p>
+  <input
+    type="text"
+    class="form-control form-control-dark"
+    [(ngModel)]="termino"
+    (input)="onBuscar()"
+    [placeholder]="placeholder"
+    autocomplete="off"
+  />
+  @if (cargando) {
+    <small class="text-muted">Buscando…</small>
+  }
+  @if (sugerencias.length > 0) {
+    <ul class="staff-ac-list">
+      @for (u of sugerencias; track u.idUsuario) {
+        <li>
+          <button type="button" class="staff-ac-item" (click)="agregar(u)">
+            {{ u.nombres }} {{ u.apellidos }} — {{ u.correo }}
+          </button>
+        </li>
+      }
+    </ul>
+  }
+  @if (seleccionados.length > 0) {
+    <div class="staff-ac-chips mt-2">
+      @for (s of seleccionados; track s.idUsuario) {
+        <span class="badge bg-secondary me-1 mb-1">
+          {{ s.nombres }} {{ s.apellidos }}
+          <button type="button" class="btn-close btn-close-white btn-sm ms-1" (click)="quitar(s.idUsuario)" aria-label="Quitar"></button>
+        </span>
+      }
+    </div>
+  }
+</div>

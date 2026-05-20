@@ -1,0 +1,92 @@
+@if (campos.length) {
+  <form [formGroup]="form" class="dynamic-fields">
+    @if (imagenError()) {
+      <div class="alert alert-warning py-2 px-3 mb-3">{{ imagenError() }}</div>
+    }
+    @for (c of campos; track trackByCampo($index, c); let idx = $index) {
+      <div class="mb-3">
+        <label class="form-label-dark" [attr.for]="key(c, idx)">
+          {{ c.etiqueta }}
+          @if (c.esObligatorio) {
+            <span class="text-danger">*</span>
+          }
+        </label>
+
+        @switch (c.tipoDato) {
+          @case ('TEXTO') {
+            <input
+              type="text"
+              class="form-control form-control-dark"
+              [id]="key(c, idx)"
+              [formControlName]="key(c, idx)"
+              autocomplete="off"
+            />
+          }
+          @case ('NUMERO') {
+            <input
+              type="number"
+              class="form-control form-control-dark"
+              [id]="key(c, idx)"
+              [formControlName]="key(c, idx)"
+              step="any"
+            />
+          }
+          @case ('URL') {
+            <input
+              type="text"
+              class="form-control form-control-dark"
+              [id]="key(c, idx)"
+              [formControlName]="key(c, idx)"
+              [attr.maxlength]="urlMaxLength"
+              placeholder="https://… o enlace largo"
+              autocomplete="url"
+            />
+            <p class="form-hint-subtle small mb-0">Hasta {{ urlMaxLength }} caracteres.</p>
+          }
+          @case ('IMAGEN') {
+            <input
+              type="file"
+              class="form-control form-control-dark"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              (change)="onImagenSelected($event, c, idx)"
+            />
+            @if (previewUrl(c, idx); as src) {
+              <img [src]="src" alt="Vista previa" class="dynamic-img-preview mt-2" />
+            }
+            <p class="form-hint-subtle small mb-0">JPEG, PNG, WebP o GIF. Máximo 2 MB.</p>
+          }
+          @case ('SELECT') {
+            <select class="form-select form-select-dark" [id]="key(c, idx)" [formControlName]="key(c, idx)">
+              <option value="">Seleccione…</option>
+              @for (opt of opcionesLista(c); track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          }
+          @case ('CHECKBOX') {
+            <select class="form-select form-select-dark" [id]="key(c, idx)" [formControlName]="key(c, idx)">
+              <option value="">Seleccione…</option>
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+          }
+        }
+
+        @if (form.get(key(c, idx))?.touched && form.get(key(c, idx))?.hasError('required')) {
+          <div class="form-hint-subtle text-danger">Este campo es obligatorio.</div>
+        }
+        @if (form.get(key(c, idx))?.touched && form.get(key(c, idx))?.hasError('numero')) {
+          <div class="form-hint-subtle text-danger">Introduzca un número válido.</div>
+        }
+        @if (form.get(key(c, idx))?.touched && form.get(key(c, idx))?.hasError('urlInvalida')) {
+          <div class="form-hint-subtle text-danger">Introduzca una URL válida.</div>
+        }
+        @if (form.get(key(c, idx))?.touched && form.get(key(c, idx))?.hasError('urlLarga')) {
+          <div class="form-hint-subtle text-danger">La URL es demasiado larga.</div>
+        }
+      </div>
+    }
+  </form>
+} @else {
+  <p class="text-secondary small mb-0">Este evento no solicita datos adicionales en la inscripción.</p>
+}

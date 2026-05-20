@@ -1,0 +1,45 @@
+.stack-label {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.stack-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.stack-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stack-tag {
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.25s ease-in-out;
+
+  &:hover {
+    border-color: #a78bfa;
+    color: #fff;
+  }
+
+  &.stack-tag-active {
+    background: linear-gradient(135deg, #7c3aed, #3b82f6);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.45);
+  }
+}
+
+.stack-selected {
+  margin-top: 0.65rem;
+}

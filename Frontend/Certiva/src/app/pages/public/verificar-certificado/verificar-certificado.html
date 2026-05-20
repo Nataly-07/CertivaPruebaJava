@@ -1,0 +1,40 @@
+<div class="verify-wrap">
+  <div class="verify-card glass-card">
+    <a routerLink="/login" class="back-link">← Inicio de sesión</a>
+    <h1 class="verify-title">Verificar certificado</h1>
+    <p class="verify-lead">Consulta la validez de un certificado emitido por Certiva.</p>
+
+    <div class="mb-3">
+      <label class="form-label-dark" for="codigo">Código de verificación</label>
+      <input
+        id="codigo"
+        type="text"
+        class="form-control form-control-dark"
+        [(ngModel)]="codigo"
+        (keyup.enter)="verificar()"
+        placeholder="Código impreso en el certificado"
+        autocomplete="off"
+      />
+    </div>
+
+    @if (errorMessage && !resultado?.valido) {
+      <div class="alert alert-danger py-2">{{ errorMessage }}</div>
+    }
+
+    @if (resultado?.valido) {
+      <div class="alert alert-success py-3">
+        <strong>{{ resultado!.mensaje }}</strong>
+        <div class="mt-2"><span class="text-muted">Participante:</span> {{ resultado!.nombreParticipante }}</div>
+        <div><span class="text-muted">Evento:</span> {{ resultado!.tituloEvento }}</div>
+        @if (resultado!.fechaEmision) {
+          <div><span class="text-muted">Emisión:</span> {{ resultado!.fechaEmision | date: 'medium' }}</div>
+        }
+        <div class="small mt-2 text-muted">Código: {{ resultado!.codigoValidacion }}</div>
+      </div>
+    }
+
+    <button type="button" class="btn btn-gradient w-100" [disabled]="loading" (click)="verificar()">
+      {{ loading ? 'Verificando…' : 'Verificar' }}
+    </button>
+  </div>
+</div>

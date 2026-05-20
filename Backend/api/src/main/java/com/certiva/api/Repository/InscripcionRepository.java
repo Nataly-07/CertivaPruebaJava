@@ -1,0 +1,53 @@
+package com.certiva.api.Repository;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.certiva.api.Entity.Inscripcion;
+
+public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> {
+
+    Optional<Inscripcion> findByTokenQr(String tokenQr);
+
+    List<Inscripcion> findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(Long idUsuario);
+
+    @Query("""
+            SELECT COUNT(i) FROM Inscripcion i
+            WHERE i.evento.idEvento = :idEvento
+              AND UPPER(TRIM(i.estado)) <> 'INACTIVO'
+            """)
+    long countCuposOcupadosPorEvento(@Param("idEvento") Long idEvento);
+
+    @Query("""
+            SELECT i.evento.idEvento, COUNT(i)
+            FROM Inscripcion i
+            WHERE i.evento.idEvento IN :ids
+              AND UPPER(TRIM(i.estado)) <> 'INACTIVO'
+            GROUP BY i.evento.idEvento
+            """)
+    List<Object[]> countInscritosActivosAgrupadosPorEvento(@Param("ids") Collection<Long> ids);
+
+    /**
+     * Asistencias confirmadas: la entidad no expone columna {@code asistio}; el esquema usa
+     * {@code estado = 'ASISTIO'} como única fuente de verdad hasta que exista migración con boolean.
+     */
+    @Query("SELECT COUNT(i) FROM Inscripcion i WHERE UPPER(TRIM(i.estado)) = 'ASISTIO'")
+    long countAsistenciasPorEstado();
+
+    @Query("""
+            SELECT CAST(i.fechaInscripcion AS date), COUNT(i)
+            FROM Inscripcion i
+            WHERE UPPER(TRIM(i.estado)) = 'ASISTIO'
+              AND i.fechaInscripcion >= :desde
+              AND i.fechaInscripcion < :hasta
+            GROUP BY CAST(i.fechaInscripcion AS date)
+            ORDER BY CAST(i.fechaInscripcion AS date)
+            """)
+    List<Object[]> countAsistenciasPorDia(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+}

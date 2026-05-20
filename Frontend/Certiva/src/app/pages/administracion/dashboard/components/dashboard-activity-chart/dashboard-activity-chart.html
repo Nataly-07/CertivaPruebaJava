@@ -1,0 +1,34 @@
+<div class="chart-wrap glass-card border-0 p-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h6 class="chart-title mb-0">Actividad del Sistema</h6>
+    <div class="btn-group btn-group-sm rango-toggle" role="group" aria-label="Rango temporal">
+      <button
+        type="button"
+        class="btn btn-rango"
+        [class.active]="rango === 7"
+        (click)="setRango(7)"
+      >
+        7 días
+      </button>
+      <button
+        type="button"
+        class="btn btn-rango"
+        [class.active]="rango === 30"
+        (click)="setRango(30)"
+      >
+        30 días
+      </button>
+      <button
+        type="button"
+        class="btn btn-rango"
+        [class.active]="rango === 90"
+        (click)="setRango(90)"
+      >
+        3 meses
+      </button>
+    </div>
+  </div>
+  <div class="canvas-box flex-grow-1">
+    <canvas #canvasEl></canvas>
+  </div>
+</div>

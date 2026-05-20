@@ -1,0 +1,17 @@
+<label class="stack-label">Stack tecnológico permitido</label>
+<p class="stack-hint">Seleccione las tecnologías que podrán usar los proyectos en la feria.</p>
+<div class="stack-tags">
+  @for (tag of opciones; track tag) {
+    <button
+      type="button"
+      class="stack-tag"
+      [class.stack-tag-active]="estaSeleccionado(tag)"
+      (click)="toggle(tag)"
+    >
+      {{ tag }}
+    </button>
+  }
+</div>
+@if (seleccionados.length) {
+  <p class="stack-selected small text-muted mb-0">Seleccionadas: {{ seleccionados.join(', ') }}</p>
+}

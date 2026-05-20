@@ -1,0 +1,58 @@
+.chart-wrap {
+  min-height: 300px;
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.01em;
+}
+
+.doughnut-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+}
+
+.ring-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  height: 220px;
+  margin: 0 auto;
+}
+
+.canvas-box {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.doughnut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.dc-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.dc-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  margin-top: 0.1rem;
+}

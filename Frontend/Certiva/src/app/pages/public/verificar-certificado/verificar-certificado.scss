@@ -1,0 +1,31 @@
+.verify-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  background: var(--gradient-bg);
+}
+
+.verify-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 2rem;
+}
+
+.verify-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.verify-lead {
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.back-link {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  font-size: 0.9rem;
+}

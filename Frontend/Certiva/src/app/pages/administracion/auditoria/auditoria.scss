@@ -1,0 +1,13 @@
+.audit-page {
+  min-height: 100vh;
+  padding: 2rem;
+  background: var(--gradient-bg);
+  color: var(--text-primary);
+}
+
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}

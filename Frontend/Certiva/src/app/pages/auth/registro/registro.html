@@ -1,0 +1,274 @@
+<div class="auth-page">
+  <!-- Logo -->
+  <div class="auth-logo">
+    <div class="logo-icon">
+      <!-- <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+        <path d="M20 2L37 11.5V30.5L20 40L3 30.5V11.5L20 2Z" fill="url(#logoGradR)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+        <path d="M20 8L31 14V26L20 32L9 26V14L20 8Z" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+        <defs>
+          <linearGradient id="logoGradR" x1="3" y1="2" x2="37" y2="40" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#7c3aed"/>
+            <stop offset="1" stop-color="#3b82f6"/>
+          </linearGradient>
+        </defs>
+      </svg> -->
+      <img src="/Images/image-removebg-preview.png" alt="">
+
+    </div>
+    <span class="logo-text">Certiva</span>
+  </div>
+
+  <!-- Register Card -->
+  <div class="auth-card glass-card">
+    <div class="auth-card-body">
+      <!-- Left: Form -->
+      <div class="auth-form-section">
+        <h2 class="auth-title">Crear Cuenta</h2>
+        <p class="auth-subtitle">Únete a la comunidad de estudiantes en Certiva</p>
+
+        @if (errorMessage) {
+          <div class="alert-dark-error mb-3">{{ errorMessage }}</div>
+        }
+        @if (successMessage) {
+          <div class="alert-dark-success mb-3">{{ successMessage }}</div>
+        }
+
+        <form [formGroup]="registroForm" (ngSubmit)="onSubmit()">
+          <!-- Row 1: Nombres + Apellidos -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label-dark">Nombre(s)</label>
+              <div class="input-icon-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <input
+                  type="text"
+                  class="form-control form-control-dark"
+                  formControlName="nombres"
+                  placeholder="Tu nombre"
+                  [class.is-invalid]="f['nombres'].touched && f['nombres'].invalid"
+                />
+              </div>
+              @if (f['nombres'].touched && f['nombres'].errors?.['required']) {
+                <div class="invalid-feedback-dark">El nombre es requerido</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-dark">Apellidos</label>
+              <div class="input-icon-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <input
+                  type="text"
+                  class="form-control form-control-dark"
+                  formControlName="apellidos"
+                  placeholder="Tus apellidos"
+                  [class.is-invalid]="f['apellidos'].touched && f['apellidos'].invalid"
+                />
+              </div>
+              @if (f['apellidos'].touched && f['apellidos'].errors?.['required']) {
+                <div class="invalid-feedback-dark">Los apellidos son requeridos</div>
+              }
+            </div>
+          </div>
+
+          <!-- Row 2: Correo + Teléfono -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label-dark">Correo electrónico</label>
+              <div class="input-icon-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </span>
+                <input
+                  type="email"
+                  class="form-control form-control-dark"
+                  formControlName="correo"
+                  placeholder="correo&#64;ejemplo.com"
+                  [class.is-invalid]="f['correo'].touched && f['correo'].invalid"
+                />
+              </div>
+              @if (f['correo'].touched && f['correo'].errors?.['required']) {
+                <div class="invalid-feedback-dark">El correo es requerido</div>
+              }
+              @if (f['correo'].touched && f['correo'].errors?.['email']) {
+                <div class="invalid-feedback-dark">Ingresa un correo válido</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-dark">Teléfono (opcional)</label>
+              <div class="input-icon-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+                </span>
+                <input
+                  type="text"
+                  class="form-control form-control-dark"
+                  formControlName="telefono"
+                  placeholder="+57 300 000 0000"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2.5: Tipo Documento + Número Documento -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label-dark">Tipo de Documento</label>
+              <select class="form-select form-select-dark" formControlName="idTipoDocumento">
+                <option [ngValue]="null" disabled>Seleccionar...</option>
+                @for (tipo of tiposDocumento; track tipo.idTipoDocumento) {
+                  <option [ngValue]="tipo.idTipoDocumento">{{ tipo.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-dark">Número de Documento</label>
+              <input
+                type="text"
+                class="form-control form-control-dark"
+                formControlName="numeroDocumento"
+                placeholder="1234567890"
+                [class.is-invalid]="f['numeroDocumento'].touched && f['numeroDocumento'].invalid"
+              />
+              @if (f['numeroDocumento'].touched && f['numeroDocumento'].errors?.['pattern']) {
+                <div class="invalid-feedback-dark">Solo se permiten números</div>
+              }
+            </div>
+          </div>
+
+          <!-- Row 3: Contraseña + Confirmar -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label-dark">Contraseña</label>
+              <div class="input-icon-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </span>
+                <input
+                  [type]="showPassword ? 'text' : 'password'"
+                  class="form-control form-control-dark"
+                  formControlName="contrasena"
+                  placeholder="Mínimo 8 caracteres"
+                  [class.is-invalid]="f['contrasena'].touched && f['contrasena'].invalid"
+                />
+                <button type="button" class="input-icon-right" (click)="togglePassword()">
+                  @if (showPassword) {
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  } @else {
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              </div>
+              @if (f['contrasena'].touched && f['contrasena'].errors?.['required']) {
+                <div class="invalid-feedback-dark">La contraseña es requerida</div>
+              }
+              @if (f['contrasena'].touched && f['contrasena'].errors?.['minlength']) {
+                <div class="invalid-feedback-dark">Mínimo 8 caracteres</div>
+              }
+              @if (f['contrasena'].value) {
+                <div class="password-strength">
+                  <div class="strength-bar" [ngClass]="passwordStrength"></div>
+                </div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-dark">Confirmar contraseña</label>
+              <div class="input-icon-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </span>
+                <input
+                  [type]="showConfirmPassword ? 'text' : 'password'"
+                  class="form-control form-control-dark"
+                  formControlName="confirmarContrasena"
+                  placeholder="Repite tu contraseña"
+                  [class.is-invalid]="f['confirmarContrasena'].touched && f['confirmarContrasena'].errors?.['passwordMismatch']"
+                />
+                <button type="button" class="input-icon-right" (click)="toggleConfirmPassword()">
+                  @if (showConfirmPassword) {
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  } @else {
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              </div>
+              @if (f['confirmarContrasena'].touched && f['confirmarContrasena'].errors?.['passwordMismatch']) {
+                <div class="invalid-feedback-dark">Las contraseñas no coinciden</div>
+              }
+              @if (passwordsMatch) {
+                <div class="match-indicator">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Las contraseñas coinciden</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-gradient w-100 mt-2"
+            [disabled]="loading"
+          >
+            @if (loading) {
+              <span class="spinner-border spinner-border-sm me-2"></span>
+            }
+            Crear cuenta
+          </button>
+        </form>
+
+        <div class="divider-text">
+          <span>o registrarse con</span>
+        </div>
+
+        <div class="social-buttons">
+          <button class="btn-social flex-fill">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
+          </button>
+          <!-- <button class="btn-social">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+          </button>
+          <button class="btn-social">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12z"/>
+            </svg>
+          </button> -->
+        </div>
+
+        <p class="auth-footer-text">
+          ¿Ya tienes cuenta?
+          <a routerLink="/login" class="auth-link">Iniciar Sesión</a>
+        </p>
+      </div>
+
+      <!-- Right: Decorative Panel -->
+      <div class="auth-decorative-panel">
+        <div class="decorative-content">
+          <div class="decorative-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+          </div>
+          <div class="decorative-text">
+            <svg width="60" height="60" viewBox="0 0 40 40" fill="none" class="mb-3">
+              <path d="M20 2L37 11.5V30.5L20 40L3 30.5V11.5L20 2Z" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+              <path d="M20 8L31 14V26L20 32L9 26V14L20 8Z" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+            </svg>
+            <h3>Certifica tu futuro</h3>
+            <p>Accede grandiosos Evento y certificaciones digitales verificables y seguras con tecnología de vanguardia</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
