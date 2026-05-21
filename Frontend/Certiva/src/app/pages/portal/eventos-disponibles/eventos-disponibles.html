@@ -1,5 +1,14 @@
 <div class="catalogo-v2 slide-container">
-  <section class="hero-banner" [style.backgroundImage]="'url(' + heroImage + ')'">
+  <section class="hero-banner">
+    <img
+      class="hero-banner-img"
+      [src]="heroImage"
+      alt=""
+      aria-hidden="true"
+      decoding="sync"
+      fetchpriority="high"
+      (error)="onHeroImageError()"
+    />
     <div class="hero-overlay"></div>
     <div class="hero-content">
       <span class="hero-badge"> CERTIVA</span>
@@ -49,7 +58,7 @@
     } @else if (!eventosMostrados.length) {
       <p class="state-msg">No hay eventos que coincidan con tu búsqueda o filtros.</p>
     } @else {
-      <div class="events-catalog-grid event-grid">
+      <div class="contenedor-eventos">
         @for (evento of eventosMostrados; track evento.idEvento) {
           <article class="event-card" [ngClass]="claseTagTipo(evento.tipoEvento)">
             <div class="card-top-tags">
@@ -71,9 +80,8 @@
                     [attr.aria-label]="esFavorito(evento.idEvento) ? 'Quitar favorito' : 'Guardar favorito'"
                   >
                     <i
-                      class="bi"
-                      [class.bi-bookmark-fill]="esFavorito(evento.idEvento)"
-                      [class.bi-bookmark]="!esFavorito(evento.idEvento)"
+                      class="bookmark-icon fa-bookmark"
+                      [ngClass]="esFavorito(evento.idEvento) ? 'fa-solid' : 'fa-regular'"
                     ></i>
                   </button>
                 }

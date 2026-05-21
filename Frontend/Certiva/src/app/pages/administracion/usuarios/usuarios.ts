@@ -19,6 +19,14 @@ import { TipoDocumentoDTO } from '../../../Models/tipo-documento-dto';
   styleUrl: './usuarios.scss',
 })
 export class Usuarios implements OnInit {
+  /** Traducción de códigos técnicos a etiquetas legibles en la tabla. */
+  readonly mapaRoles: Record<string, string> = {
+    ROLE_ADMIN: 'Administrador',
+    ROLE_PROFESOR: 'Profesor',
+    ROLE_MONITOR: 'Monitor',
+    ROLE_ESTUDIANTE: 'Estudiante',
+  };
+
   usuarios: UsuarioDTO[] = [];
   roles: RolDTO[] = [];
   tiposDocumento: TipoDocumentoDTO[] = [];
@@ -102,23 +110,27 @@ export class Usuarios implements OnInit {
     return e === true || e === 'ACTIVO' || e === 'true';
   }
 
-  badgeClassForRol(user: UsuarioDTO): string {
-    const c = user.rol?.codigo?.toUpperCase() ?? '';
-    const n = user.rol?.nombre?.toUpperCase() ?? '';
-    if (c.includes('ADMIN') || n.includes('ADMIN')) return 'badge bg-danger';
-    if (c.includes('ESTUDIANTE') || n.includes('ESTUDIANTE')) return 'badge bg-primary';
-    if (c.includes('MONITOR') || n.includes('MONITOR')) return 'badge bg-info text-dark';
-    if (c.includes('PROFESOR') || n.includes('PROFESOR')) {
-      return 'badge bg-secondary';
+  etiquetaRolBadge(user: UsuarioDTO): string {
+    const codigo = (user.rol?.codigo ?? '').toUpperCase();
+    if (codigo && this.mapaRoles[codigo]) {
+      return this.mapaRoles[codigo];
     }
-    return 'badge bg-light text-dark';
+    const nombre = (user.rol?.nombre ?? '').toUpperCase();
+    if (nombre && this.mapaRoles[nombre]) {
+      return this.mapaRoles[nombre];
+    }
+    const raw = user.rol?.nombre ?? user.rol?.codigo ?? '';
+    const limpio = raw.replace(/^ROLE_/i, '').replace(/_/g, ' ').trim().toLowerCase();
+    if (!limpio) {
+      return 'Sin rol';
+    }
+    return limpio.charAt(0).toUpperCase() + limpio.slice(1);
   }
 
-  etiquetaRol(user: UsuarioDTO): string {
-    const codigo = user.rol?.codigo;
-    if (codigo) return codigo.replace(/_/g, ' ');
-    const nombre = user.rol?.nombre ?? '';
-    return nombre.startsWith('ROLE_') ? nombre.replace(/^ROLE_/, '').replace(/_/g, ' ') : nombre;
+  claseBadgeRol(user: UsuarioDTO): string {
+    const raw = (user.rol?.codigo ?? user.rol?.nombre ?? '').toLowerCase();
+    const clave = raw.replace(/^role_/, '').replace(/\s+/g, '_');
+    return `role_${clave || 'desconocido'}`;
   }
 
   toggleSidebar(): void {
@@ -234,29 +246,6 @@ export class Usuarios implements OnInit {
         this.loadUsuarios();
       },
       error: (err) => console.error('Error al actualizar usuario', err),
-    });
-  }
-
-  onQuickRolSelect(user: UsuarioDTO, event: Event): void {
-    if (!this.isAdmin) return;
-    const el = event.target as HTMLSelectElement;
-    const prev = String(user.rol?.idRol ?? '');
-    const nuevoIdStr = el.value;
-    if (nuevoIdStr === prev) return;
-
-    const nombre = `${user.nombres} ${user.apellidos}`;
-    if (!confirm(`¿Cambiar el rol de ${nombre}?`)) {
-      el.value = prev;
-      return;
-    }
-
-    const nuevoId = Number(nuevoIdStr);
-    this.usuarioService.cambiarRol(user.idUsuario, nuevoId).subscribe({
-      next: () => this.loadUsuarios(),
-      error: (err) => {
-        console.error('Error al cambiar rol', err);
-        el.value = prev;
-      },
     });
   }
 

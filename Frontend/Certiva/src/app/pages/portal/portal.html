@@ -1,0 +1,103 @@
+<div class="portal-bento">
+  @if (loading()) {
+    <p class="portal-loading">Cargando tu panel…</p>
+  } @else {
+    @if (errorMsg()) {
+      <div class="alert alert-warning mb-3">{{ errorMsg() }}</div>
+    }
+
+    <section class="hero-section" [style.background-image]="heroBackground">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <span class="hero-kicker">Portal del estudiante</span>
+        <h1 class="hero-greeting">{{ saludoDinamico }}</h1>
+        <p class="hero-lead">
+          Tu espacio para inscribirte, presentar tu QR en la entrada y descargar certificados verificables.
+        </p>
+        @if (eventoHoyQr(); as ev) {
+          <a routerLink="/portal/mis-eventos" class="btn-qr-entrada">
+            <span class="btn-qr-row">
+              <i class="fa-solid fa-qrcode" aria-hidden="true"></i>
+              Generar QR de Entrada
+            </span>
+            <span class="btn-qr-sub">{{ ev.nombreEvento }}</span>
+          </a>
+        }
+      </div>
+    </section>
+
+    <div class="portal-container">
+      <a routerLink="/portal/mis-eventos" class="card-item card-eventos">
+        <div class="card-icon-wrap">
+          <i class="fa-solid fa-calendar-check card-icon" aria-hidden="true"></i>
+        </div>
+        <h2 class="card-title">Mis eventos</h2>
+        <p class="card-desc">Inscritos, en curso y finalizados</p>
+        <div class="card-inner">
+          <p class="card-highlight">{{ textoProximoEvento }}</p>
+          @if (proximoEvento(); as prox) {
+            <span class="card-pill">{{ prox.fase }}</span>
+          }
+        </div>
+        <span class="card-cta">Ver todos <i class="fa-solid fa-arrow-right"></i></span>
+      </a>
+
+      <a routerLink="/portal/certificados" class="card-item card-certificados">
+        <div class="card-icon-wrap">
+          <i class="fa-solid fa-award card-icon" aria-hidden="true"></i>
+        </div>
+        <h2 class="card-title">Certificados</h2>
+        <p class="card-desc">Diplomas con verificación pública</p>
+        <div class="card-inner card-inner--cert">
+          <div class="cert-counter">
+            <span class="cert-counter-num">{{ totalCertificados() }}</span>
+            <span class="cert-counter-label">
+              {{ totalCertificados() === 1 ? 'Diploma obtenido' : 'Diplomas obtenidos' }}
+            </span>
+          </div>
+          @if (ultimoCertificado(); as ult) {
+            <div class="cert-miniatura" title="Último certificado emitido">
+              <i class="fa-solid fa-certificate cert-mini-icon" aria-hidden="true"></i>
+              <div class="cert-mini-text">
+                <span class="cert-mini-label">Último logro</span>
+                <strong>{{ ult.nombreEvento }}</strong>
+                @if (ult.fechaEmision) {
+                  <small>{{ ult.fechaEmision | date: 'mediumDate' }}</small>
+                }
+              </div>
+            </div>
+          } @else {
+            <p class="card-muted">Completa un evento para obtener tu primer diploma.</p>
+          }
+        </div>
+        <span class="card-cta">Mis certificados <i class="fa-solid fa-arrow-right"></i></span>
+      </a>
+
+      <a routerLink="/portal/eventos" class="card-item card-explorar">
+        <div class="card-icon-wrap">
+          <i class="fa-solid fa-compass card-icon" aria-hidden="true"></i>
+        </div>
+        <h2 class="card-title">Explorar</h2>
+        <p class="card-desc">Nuevas inscripciones y catálogo</p>
+        <div class="card-inner">
+          <div class="reco-banner">
+            <span class="reco-tag">Recomendado para ti</span>
+            @if (eventoRecomendado(); as rec) {
+              <p class="reco-title">{{ rec.nombreEvento }}</p>
+              <p class="reco-meta">
+                {{ etiquetaTipo(rec.tipoEvento) }}
+                @if (rec.fechaInicio) {
+                  · {{ rec.fechaInicio | date: 'd MMM' }}
+                }
+              </p>
+            } @else {
+              <p class="reco-title">Descubre eventos tecnológicos</p>
+              <p class="reco-meta">Cursos, hackathones, ferias y talleres</p>
+            }
+          </div>
+        </div>
+        <span class="card-cta">Explorar catálogo <i class="fa-solid fa-arrow-right"></i></span>
+      </a>
+    </div>
+  }
+</div>

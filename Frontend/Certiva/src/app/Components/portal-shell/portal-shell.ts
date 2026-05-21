@@ -35,7 +35,7 @@ import { AuthService } from '../../Services/auth.service';
         padding: 1.5rem 1.25rem 3rem;
       }
       .portal-top {
-        max-width: 1100px;
+        max-width: 1200px;
         margin: 0 auto 1.75rem;
         padding: 1rem 1.25rem;
         display: flex;
@@ -82,8 +82,9 @@ import { AuthService } from '../../Services/auth.service';
         background: rgba(34, 211, 238, 0.08);
       }
       .portal-main {
-        max-width: 1100px;
+        max-width: 1200px;
         margin: 0 auto;
+        width: 100%;
       }
     `,
   ],

@@ -18,6 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -170,7 +171,7 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED, readOnly = true)
     public List<EventoResumenTipoDTO> listarResumenTipos(Boolean soloActivos, ModalidadEvento modalidad) {
         Boolean activo = resolverFiltroActivo(soloActivos);
         List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, null, null, null);
@@ -199,7 +200,7 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED, readOnly = true)
     public List<EventoFilaAdminDTO> listarVistaAdmin(Boolean soloActivos,
                                                     ModalidadEvento modalidad,
                                                     TipoEventoEnum tipo,

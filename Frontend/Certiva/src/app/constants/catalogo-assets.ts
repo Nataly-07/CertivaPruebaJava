@@ -12,8 +12,16 @@ export const IMAGEN_EVENTO_POR_TIPO: Record<TipoEventoEnum, string> = {
     'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
 };
 
-export const HERO_CATALOGO_IMAGEN =
-  'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1600&q=80';
+/** Hero del catálogo (`public/Images/Image_5.png`). */
+export const HERO_CATALOGO_IMAGEN = '/Images/Image_5.png';
+
+/** Respaldo si Image_5 no carga. */
+export const HERO_CATALOGO_IMAGEN_FALLBACKS = [
+  '/Images/Image_5.png',
+  '/Images/Image_5.jpg',
+  '/Images/Image_3.jpg',
+  '/Images/Image_2.png',
+] as const;
 
 export type FiltroCategoriaCatalogo = 'Todos' | 'Cursos' | 'Hackathones' | 'Ferias' | 'Talleres';
 

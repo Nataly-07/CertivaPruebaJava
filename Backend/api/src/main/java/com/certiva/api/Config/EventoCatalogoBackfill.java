@@ -39,11 +39,18 @@ public class EventoCatalogoBackfill implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        catalogoHelper.asegurarCatalogoBase();
-        asegurarColumnaTipoEventoEnEvento();
-        repararFilasHijasJoined();
-        rellenarCatalogoEnEventos();
-        intentarRestriccionNotNull();
+        try {
+            catalogoHelper.asegurarCatalogoBase();
+            asegurarColumnaTipoEventoEnEvento();
+            repararFilasHijasJoined();
+            rellenarCatalogoEnEventos();
+            intentarRestriccionNotNull();
+        } catch (Exception ex) {
+            log.error(
+                    "Backfill de catálogo falló; el API sigue activo. Revise columnas fecha_inicio/fecha_fin y tabla usuario: {}",
+                    ex.getMessage(),
+                    ex);
+        }
     }
 
     /** Eventos legados sin discriminante en columna tipo_evento. */

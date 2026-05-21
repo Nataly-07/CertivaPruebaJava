@@ -5,23 +5,50 @@
 
 .hero-banner {
   position: relative;
-  min-height: 200px;
-  max-height: 220px;
-  background-size: cover;
-  background-position: center;
+  min-height: 280px;
+  max-height: 420px;
+  overflow: hidden;
   display: flex;
   align-items: center;
+}
+
+.hero-banner-img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+  image-rendering: high-quality;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  filter: contrast(1.03) saturate(1.05);
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #0f172a 30%, transparent 100%);
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.78) 0%,
+    rgba(15, 23, 42, 0.42) 48%,
+    rgba(15, 23, 42, 0.22) 100%
+  );
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .hero-banner {
+    min-height: 320px;
+    max-height: 460px;
+  }
 }
 
 .hero-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   max-width: 1120px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
@@ -65,7 +92,7 @@
 }
 
 .catalogo-body {
-  max-width: 1120px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem 1.25rem 3rem;
 }
@@ -154,23 +181,14 @@
   padding: 2rem;
 }
 
-.event-grid {
+.contenedor-eventos {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
-}
-
-@media (min-width: 768px) {
-  .event-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  padding-top: 30px;
 }
 
 @media (min-width: 1100px) {
-  .event-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .filter-bar {
     flex-direction: row;
     align-items: center;
@@ -251,11 +269,23 @@
   border: none;
   background: transparent;
   color: #38bdf8;
-  padding: 0.15rem;
+  padding: 0.2rem;
   cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s ease, transform 0.15s ease;
+
+  &:hover {
+    color: #7dd3fc;
+    transform: scale(1.08);
+  }
 
   &--on {
     color: #0ea5e9;
+  }
+
+  .bookmark-icon {
+    font-size: 1.05rem;
+    pointer-events: none;
   }
 }
 

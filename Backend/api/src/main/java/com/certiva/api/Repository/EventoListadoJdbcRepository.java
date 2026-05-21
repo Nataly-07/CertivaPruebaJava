@@ -29,14 +29,12 @@ public class EventoListadoJdbcRepository {
 
     private static final Logger log = LoggerFactory.getLogger(EventoListadoJdbcRepository.class);
 
-    /** Variantes según cómo Hibernate creó las tablas en PostgreSQL. */
+    /** PostgreSQL: tablas en minúsculas (usuario, evento, inscripcion). */
     private static final String[][] TABLA_EVENTO_USUARIO = {
-            { "evento", "\"Usuario\"" },
-            { "\"Evento\"", "\"Usuario\"" },
             { "evento", "usuario" },
     };
 
-    private static final String[] TABLA_INSCRIPCION = { "\"Inscripcion\"", "inscripcion" };
+    private static final String[] TABLA_INSCRIPCION = { "inscripcion", "\"Inscripcion\"" };
 
     private final JdbcTemplate jdbc;
 
@@ -458,7 +456,7 @@ public class EventoListadoJdbcRepository {
                     """
                     + where
                     + " ORDER BY e.fecha_inicio DESC";
-            log.warn("Listado eventos sin JOIN a Usuario (revisar FK id_creador)");
+            log.warn("Listado eventos sin JOIN a usuario (revisar FK id_creador)");
             return jdbc.query(sqlSinJoin, rowMapper(), params.toArray());
         } catch (Exception ex) {
             ultima = ex;
@@ -487,7 +485,7 @@ public class EventoListadoJdbcRepository {
         }
 
         log.error("No se pudo listar eventos JDBC", ultima);
-        throw new IllegalStateException("No se pudo listar eventos (revise tablas evento/Usuario)", ultima);
+        throw new IllegalStateException("No se pudo listar eventos (revise tablas evento/usuario)", ultima);
     }
 
     private static boolean esEventoActivo(EventoListadoRow e) {

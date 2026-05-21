@@ -189,21 +189,9 @@
                   <td>{{ user.correo }}</td>
                   <td>{{ user.numeroDocumento }}</td>
                   <td>
-                    <div class="d-flex flex-column gap-2 align-items-start">
-                      <span [class]="badgeClassForRol(user)">{{ etiquetaRol(user) }}</span>
-                      @if (isAdmin && roles.length > 0) {
-                        <select
-                          class="form-select form-select-sm form-select-dark w-auto"
-                          [value]="user.rol?.idRol"
-                          (change)="onQuickRolSelect(user, $event)"
-                          title="Cambiar rol"
-                        >
-                          @for (rol of roles; track rol.idRol) {
-                            <option [value]="rol.idRol">{{ rol.nombre }}</option>
-                          }
-                        </select>
-                      }
-                    </div>
+                    <span class="badge-rol" [ngClass]="claseBadgeRol(user)">
+                      {{ etiquetaRolBadge(user) }}
+                    </span>
                   </td>
                   <td>
                     <span [class]="esUsuarioActivo(user) ? 'badge-active' : 'badge-inactive'">

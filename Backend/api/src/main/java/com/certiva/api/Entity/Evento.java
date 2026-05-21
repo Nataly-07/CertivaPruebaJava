@@ -67,10 +67,10 @@ public abstract class Evento {
     @JoinColumn(name = "id_tipo_evento", nullable = true)
     private TipoEvento catalogoTipoEvento;
 
-    @Column(nullable = false)
+    @Column(name = "fecha_inicio", nullable = false)
     private LocalDateTime fechaInicio;
 
-    @Column(nullable = false)
+    @Column(name = "fecha_fin", nullable = false)
     private LocalDateTime fechaFin;
 
     @Column(length = 500)

@@ -400,3 +400,37 @@
     grid-template-columns: 1fr;
   }
 }
+
+.badge-rol {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  white-space: nowrap;
+
+  &.role_admin {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+  }
+
+  &.role_profesor {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+
+  &.role_monitor {
+    background-color: rgba(234, 179, 8, 0.2);
+    color: #fde047;
+  }
+
+  &.role_estudiante {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+
+  &.role_desconocido {
+    background-color: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+  }
+}

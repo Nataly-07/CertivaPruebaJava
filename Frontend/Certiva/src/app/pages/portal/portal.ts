@@ -1,93 +1,136 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../Services/auth.service';
+import { InscripcionService } from '../../Services/inscripcion.service';
+import { CertificadoService } from '../../Services/certificado.service';
+import { EventoService } from '../../Services/evento.service';
+import { CertificadoPortalDTO, InscripcionPortalDTO } from '../../Models/portal-dto';
+import { EventoPublico } from '../../Models/evento-publico';
+import { etiquetaTipoEvento } from '../../constants/ui-labels';
 
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [CommonModule, RouterLink],
-  template: `
-    <div class="portal-home glass-card">
-      <p class="welcome">Hola, {{ nombreUsuario }}</p>
-      <h2 class="portal-home-title">Tu espacio de aprendizaje</h2>
-      <p class="portal-home-lead">
-        Consulta tus inscripciones, presenta tu QR de entrada en los eventos y descarga certificados al finalizar.
-      </p>
-      <div class="quick-links">
-        <a routerLink="/portal/mis-eventos" class="quick-card">
-          <span class="quick-label">Mis eventos</span>
-          <span class="quick-hint">Inscritos, en curso y finalizados</span>
-        </a>
-        <a routerLink="/portal/certificados" class="quick-card">
-          <span class="quick-label">Certificados</span>
-          <span class="quick-hint">Descargar diplomas verificables</span>
-        </a>
-        <a routerLink="/portal/eventos" class="quick-card">
-          <span class="quick-label">Explorar eventos</span>
-          <span class="quick-hint">Nuevas inscripciones</span>
-        </a>
-      </div>
-    </div>
-  `,
-  styles: [
-    `
-      .portal-home {
-        padding: 2rem 1.75rem;
-        border-radius: var(--radius-lg);
-      }
-      .welcome {
-        font-size: 0.85rem;
-        color: var(--accent-cyan);
-        font-weight: 600;
-        margin-bottom: 0.35rem;
-      }
-      .portal-home-title {
-        font-size: 1.5rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-      }
-      .portal-home-lead {
-        color: var(--text-secondary);
-        max-width: 520px;
-        margin-bottom: 1.75rem;
-      }
-      .quick-links {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-      }
-      .quick-card {
-        display: block;
-        padding: 1.15rem 1.2rem;
-        border-radius: var(--radius-md);
-        border: 1px solid rgba(124, 58, 237, 0.3);
-        background: rgba(124, 58, 237, 0.08);
-        text-decoration: none;
-        transition: transform 0.2s ease, border-color 0.2s ease;
-      }
-      .quick-card:hover {
-        transform: translateY(-2px);
-        border-color: rgba(34, 211, 238, 0.45);
-      }
-      .quick-label {
-        display: block;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 0.25rem;
-      }
-      .quick-hint {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-      }
-    `,
-  ],
+  imports: [CommonModule, RouterLink, DatePipe],
+  templateUrl: './portal.html',
+  styleUrl: './portal.scss',
 })
-export class Portal {
-  nombreUsuario = '';
+export class Portal implements OnInit {
+  private readonly auth = inject(AuthService);
+  private readonly inscripcionService = inject(InscripcionService);
+  private readonly certificadoService = inject(CertificadoService);
+  private readonly eventoService = inject(EventoService);
 
-  constructor(private auth: AuthService) {
+  readonly heroBackground = `linear-gradient(rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.55)), url('/Images/eventos-de-tecnologia.webp')`;
+  readonly etiquetaTipo = etiquetaTipoEvento;
+
+  nombreUsuario = 'Participante';
+  loading = signal(true);
+  errorMsg = signal<string | null>(null);
+
+  eventosActivosHoy = signal(0);
+  proximoEvento = signal<InscripcionPortalDTO | null>(null);
+  eventoHoyQr = signal<InscripcionPortalDTO | null>(null);
+  totalCertificados = signal(0);
+  ultimoCertificado = signal<CertificadoPortalDTO | null>(null);
+  eventoRecomendado = signal<EventoPublico | null>(null);
+
+  ngOnInit(): void {
     const u = this.auth.getUsuario();
-    this.nombreUsuario = u ? `${u.nombres}`.trim() : 'Participante';
+    this.nombreUsuario = u?.nombres?.trim() || 'Participante';
+
+    forkJoin({
+      inscripciones: this.inscripcionService.listarMis().pipe(catchError(() => of([] as InscripcionPortalDTO[]))),
+      certificados: this.certificadoService.listarMis().pipe(catchError(() => of([] as CertificadoPortalDTO[]))),
+      catalogo: this.eventoService.obtenerCatalogoPublico().pipe(catchError(() => of([] as EventoPublico[]))),
+    }).subscribe({
+      next: ({ inscripciones, certificados, catalogo }) => {
+        this.procesarInscripciones(inscripciones ?? []);
+        this.procesarCertificados(certificados ?? []);
+        this.eventoRecomendado.set((catalogo ?? [])[0] ?? null);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.errorMsg.set('No se pudo cargar tu panel. Intenta recargar la página.');
+        this.loading.set(false);
+      },
+    });
+  }
+
+  get saludoDinamico(): string {
+    const n = this.eventosActivosHoy();
+    if (n === 0) {
+      return `Hola, ${this.nombreUsuario}. No tienes eventos activos hoy`;
+    }
+    if (n === 1) {
+      return `Hola, ${this.nombreUsuario}. Tienes 1 evento activo hoy`;
+    }
+    return `Hola, ${this.nombreUsuario}. Tienes ${n} eventos activos hoy`;
+  }
+
+  get textoProximoEvento(): string {
+    const p = this.proximoEvento();
+    if (!p) {
+      return 'Sin eventos próximos. Explora el catálogo para inscribirte.';
+    }
+    const inicio = this.parseFecha(p.fechaInicio);
+    const cuando = inicio
+      ? inicio.toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : 'fecha por confirmar';
+    return `Próximo: ${p.nombreEvento} — ${cuando}`;
+  }
+
+  private procesarInscripciones(lista: InscripcionPortalDTO[]): void {
+    const hoy = new Date();
+    const vigentes = lista.filter(i => i.fase !== 'FINALIZADO');
+
+    const activosHoy = vigentes.filter(i => this.ocurreHoy(hoy, i));
+    this.eventosActivosHoy.set(activosHoy.length);
+
+    const conQrHoy = activosHoy.find(i => !!i.tokenQr);
+    this.eventoHoyQr.set(conQrHoy ?? null);
+
+    const ordenados = [...vigentes].sort((a, b) => {
+      const fa = this.parseFecha(a.fechaInicio)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const fb = this.parseFecha(b.fechaInicio)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return fa - fb;
+    });
+    this.proximoEvento.set(ordenados[0] ?? null);
+  }
+
+  private procesarCertificados(lista: CertificadoPortalDTO[]): void {
+    this.totalCertificados.set(lista.length);
+    if (lista.length === 0) {
+      this.ultimoCertificado.set(null);
+      return;
+    }
+    const ordenados = [...lista].sort((a, b) => {
+      const fa = this.parseFecha(a.fechaEmision)?.getTime() ?? 0;
+      const fb = this.parseFecha(b.fechaEmision)?.getTime() ?? 0;
+      return fb - fa;
+    });
+    this.ultimoCertificado.set(ordenados[0]);
+  }
+
+  private ocurreHoy(hoy: Date, ins: InscripcionPortalDTO): boolean {
+    const inicio = this.parseFecha(ins.fechaInicio);
+    const fin = this.parseFecha(ins.fechaFin) ?? inicio;
+    if (!inicio) {
+      return false;
+    }
+    const dayStart = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const dayEnd = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59, 59, 999);
+    return inicio <= dayEnd && (fin ?? inicio) >= dayStart;
+  }
+
+  private parseFecha(valor?: string): Date | null {
+    if (!valor) {
+      return null;
+    }
+    const d = new Date(valor);
+    return Number.isNaN(d.getTime()) ? null : d;
   }
 }

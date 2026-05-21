@@ -12,6 +12,7 @@ import {
   FAVORITOS_STORAGE_KEY,
   FiltroCategoriaCatalogo,
   HERO_CATALOGO_IMAGEN,
+  HERO_CATALOGO_IMAGEN_FALLBACKS,
 } from '../../../constants/catalogo-assets';
 import { etiquetaModalidad, etiquetaTipoEvento } from '../../../constants/ui-labels';
 
@@ -29,7 +30,8 @@ export class EventosDisponibles implements OnInit {
   readonly authService = inject(AuthService);
 
   readonly chips = CHIPS_CATALOGO;
-  readonly heroImage = HERO_CATALOGO_IMAGEN;
+  heroImage = HERO_CATALOGO_IMAGEN;
+  private heroFallbackIndex = 0;
   readonly etiquetaTipo = etiquetaTipoEvento;
   readonly etiquetaMod = etiquetaModalidad;
 
@@ -46,6 +48,16 @@ export class EventosDisponibles implements OnInit {
   ngOnInit(): void {
     this.cargarFavoritos();
     this.cargarCatalogo();
+  }
+
+  /** Prueba la siguiente extensión de Image_2 si el archivo no carga. */
+  onHeroImageError(): void {
+    const fallbacks = HERO_CATALOGO_IMAGEN_FALLBACKS;
+    if (this.heroFallbackIndex >= fallbacks.length - 1) {
+      return;
+    }
+    this.heroFallbackIndex += 1;
+    this.heroImage = fallbacks[this.heroFallbackIndex];
   }
 
   /** Rol estudiante (en Certiva: ESTUDIANTE, no CLIENTE). */
