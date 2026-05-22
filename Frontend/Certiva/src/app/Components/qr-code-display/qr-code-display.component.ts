@@ -1,15 +1,21 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { environment } from '../../../environments/environment';
+import { QRCodeComponent } from 'angularx-qrcode';
 
 @Component({
   selector: 'app-qr-code-display',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, QRCodeComponent],
   template: `
     <div class="qr-display">
       @if (data) {
-        <img class="qr-img" [src]="qrUrl" [alt]="alt" [width]="size" [height]="size" loading="lazy" />
+        <qrcode
+          [qrdata]="data"
+          [width]="size"
+          [errorCorrectionLevel]="errorLevel"
+          [margin]="2"
+          cssClass="qr-canvas-wrap"
+        />
       }
       @if (caption) {
         <p class="qr-caption">{{ caption }}</p>
@@ -27,7 +33,8 @@ import { environment } from '../../../environments/environment';
         align-items: center;
         gap: 0.5rem;
       }
-      .qr-img {
+      :host ::ng-deep .qr-canvas-wrap img,
+      :host ::ng-deep .qr-canvas-wrap canvas {
         border-radius: 12px;
         background: #fff;
         padding: 8px;
@@ -41,24 +48,26 @@ import { environment } from '../../../environments/environment';
       }
       .qr-url {
         margin: 0;
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         color: var(--text-muted);
         max-width: 100%;
         word-break: break-all;
         text-align: center;
+        line-height: 1.35;
       }
     `,
   ],
 })
-export class QrCodeDisplayComponent {
+export class QrCodeDisplayComponent implements OnChanges {
   @Input() data = '';
   @Input() size = 200;
   @Input() alt = 'Código QR';
   @Input() caption = '';
   @Input() showUrl = false;
 
-  get qrUrl(): string {
-    const base = environment.API_URL.replace(/\/$/, '');
-    return `${base}/public/qr?data=${encodeURIComponent(this.data)}&size=${this.size}`;
+  readonly errorLevel = 'M' as const;
+
+  ngOnChanges(): void {
+    // Inputs consumidos por qrcode
   }
 }

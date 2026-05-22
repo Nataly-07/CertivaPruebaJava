@@ -24,7 +24,6 @@ export class Portal implements OnInit {
   private readonly certificadoService = inject(CertificadoService);
   private readonly eventoService = inject(EventoService);
 
-  readonly heroBackground = `linear-gradient(rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.55)), url('/Images/eventos-de-tecnologia.webp')`;
   readonly etiquetaTipo = etiquetaTipoEvento;
 
   nombreUsuario = 'Participante';
@@ -90,7 +89,7 @@ export class Portal implements OnInit {
     const activosHoy = vigentes.filter(i => this.ocurreHoy(hoy, i));
     this.eventosActivosHoy.set(activosHoy.length);
 
-    const conQrHoy = activosHoy.find(i => !!i.tokenQr);
+    const conQrHoy = activosHoy.find(i => !!i.idInscripcion);
     this.eventoHoyQr.set(conQrHoy ?? null);
 
     const ordenados = [...vigentes].sort((a, b) => {

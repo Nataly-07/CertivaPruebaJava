@@ -1,0 +1,68 @@
+<div class="cert-page portal-page-card portal-estudiante">
+  <header class="page-hero-head">
+    <span class="page-hero-kicker"><i class="fa-solid fa-award" aria-hidden="true"></i> Tus logros</span>
+    <h2 class="page-hero-title">Mis certificados</h2>
+    <p class="page-hero-sub">
+      Diplomas con código de verificación público. Cualquier reclutador puede validarlos en
+      <a routerLink="/verificar-certificado" class="link-cyan">verificar certificado</a>.
+    </p>
+  </header>
+
+  @if (loading()) {
+    <div class="portal-skeleton">
+      <div class="sk-line sk-line--lg"></div>
+      <div class="sk-line"></div>
+      <div class="sk-line"></div>
+    </div>
+  } @else if (lista().length === 0) {
+    <div class="portal-empty">
+      <div class="portal-empty-icon">
+        <i class="fa-solid fa-certificate" aria-hidden="true"></i>
+      </div>
+      <h3>Tu vitrina está lista para el primer diploma</h3>
+      <p>
+        Al finalizar un evento y cumplir los requisitos, podrás descargar tu certificado desde
+        <a routerLink="/portal/mis-eventos" class="link-cyan">Mis eventos</a>.
+      </p>
+      <a routerLink="/portal/eventos" class="btn btn-gradient btn-sm">
+        <i class="fa-solid fa-compass" aria-hidden="true"></i>
+        Explorar eventos
+      </a>
+    </div>
+  } @else {
+    <div class="cert-showcase">
+      @for (c of lista(); track c.idCertificado) {
+        <article class="cert-diploma">
+          <div class="cert-diploma-glow" aria-hidden="true"></div>
+          <div class="cert-diploma-seal">
+            <i class="fa-solid fa-medal" aria-hidden="true"></i>
+          </div>
+          <div class="cert-diploma-body">
+            <h3>{{ c.nombreEvento }}</h3>
+            <p class="cert-diploma-date">
+              <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
+              Emitido: {{ c.fechaEmision | date: 'd MMMM y' }}
+            </p>
+            <p class="cert-diploma-code">
+              <i class="fa-solid fa-fingerprint" aria-hidden="true"></i>
+              {{ c.codigoValidacion }}
+            </p>
+            <button
+              type="button"
+              class="btn-cert-download"
+              [disabled]="descargandoId() === c.idCertificado"
+              (click)="descargar(c)"
+            >
+              <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i>
+              @if (descargandoId() === c.idCertificado) {
+                Descargando…
+              } @else {
+                Descargar PDF
+              }
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>

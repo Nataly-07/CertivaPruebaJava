@@ -1,34 +1,79 @@
-<div class="portal-bento">
+<div class="portal-bento portal-estudiante">
   @if (loading()) {
-    <p class="portal-loading">Cargando tu panel…</p>
+    <div class="portal-skeleton portal-skeleton--home">
+      <div class="sk-line sk-line--lg"></div>
+      <div class="sk-line sk-line--md"></div>
+      <div class="sk-hero-block"></div>
+      <div class="sk-cards-row">
+        <div class="sk-card"></div>
+        <div class="sk-card"></div>
+        <div class="sk-card"></div>
+      </div>
+    </div>
   } @else {
     @if (errorMsg()) {
       <div class="alert alert-warning mb-3">{{ errorMsg() }}</div>
     }
 
-    <section class="hero-section" [style.background-image]="heroBackground">
+    <section class="hero-section">
+      <img
+        class="hero-img"
+        src="/Images/eventos-de-tecnologia.webp"
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+        fetchpriority="high"
+      />
       <div class="hero-overlay"></div>
+      <div class="hero-glow" aria-hidden="true"></div>
       <div class="hero-content">
-        <span class="hero-kicker">Portal del estudiante</span>
+        <span class="hero-kicker">
+          <i class="fa-solid fa-sparkles" aria-hidden="true"></i>
+          Tu espacio de aprendizaje
+        </span>
         <h1 class="hero-greeting">{{ saludoDinamico }}</h1>
         <p class="hero-lead">
-          Tu espacio para inscribirte, presentar tu QR en la entrada y descargar certificados verificables.
+          Inscríbete, presenta tu QR en la entrada y descarga certificados verificables cuando termines.
         </p>
-        @if (eventoHoyQr(); as ev) {
-          <a routerLink="/portal/mis-eventos" class="btn-qr-entrada">
-            <span class="btn-qr-row">
-              <i class="fa-solid fa-qrcode" aria-hidden="true"></i>
-              Generar QR de Entrada
-            </span>
-            <span class="btn-qr-sub">{{ ev.nombreEvento }}</span>
+        <div class="hero-actions">
+          @if (eventoHoyQr(); as ev) {
+            <a routerLink="/portal/mis-eventos" class="btn-qr-entrada">
+              <span class="btn-qr-row">
+                <i class="fa-solid fa-qrcode" aria-hidden="true"></i>
+                Generar QR de entrada
+              </span>
+              <span class="btn-qr-sub">{{ ev.nombreEvento }}</span>
+            </a>
+          }
+          <a routerLink="/portal/eventos" class="btn-hero-secondary">
+            <i class="fa-solid fa-compass" aria-hidden="true"></i>
+            Explorar catálogo
           </a>
-        }
+        </div>
       </div>
     </section>
 
+    @if (eventosActivosHoy() > 0 || totalCertificados() > 0) {
+      <div class="stats-strip">
+        @if (eventosActivosHoy() > 0) {
+          <div class="stat-pill stat-pill--blue">
+            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+            <span>{{ eventosActivosHoy() }} activo{{ eventosActivosHoy() === 1 ? '' : 's' }} hoy</span>
+          </div>
+        }
+        @if (totalCertificados() > 0) {
+          <div class="stat-pill stat-pill--emerald">
+            <i class="fa-solid fa-certificate" aria-hidden="true"></i>
+            <span>{{ totalCertificados() }} certificado{{ totalCertificados() === 1 ? '' : 's' }}</span>
+          </div>
+        }
+      </div>
+    }
+
     <div class="portal-container">
       <a routerLink="/portal/mis-eventos" class="card-item card-eventos">
-        <div class="card-icon-wrap">
+        <div class="card-accent" aria-hidden="true"></div>
+        <div class="card-icon-wrap card-icon-wrap--blue">
           <i class="fa-solid fa-calendar-check card-icon" aria-hidden="true"></i>
         </div>
         <h2 class="card-title">Mis eventos</h2>
@@ -43,7 +88,8 @@
       </a>
 
       <a routerLink="/portal/certificados" class="card-item card-certificados">
-        <div class="card-icon-wrap">
+        <div class="card-accent" aria-hidden="true"></div>
+        <div class="card-icon-wrap card-icon-wrap--emerald">
           <i class="fa-solid fa-award card-icon" aria-hidden="true"></i>
         </div>
         <h2 class="card-title">Certificados</h2>
@@ -74,14 +120,18 @@
       </a>
 
       <a routerLink="/portal/eventos" class="card-item card-explorar">
-        <div class="card-icon-wrap">
+        <div class="card-accent" aria-hidden="true"></div>
+        <div class="card-icon-wrap card-icon-wrap--violet">
           <i class="fa-solid fa-compass card-icon" aria-hidden="true"></i>
         </div>
         <h2 class="card-title">Explorar</h2>
         <p class="card-desc">Nuevas inscripciones y catálogo</p>
         <div class="card-inner">
           <div class="reco-banner">
-            <span class="reco-tag">Recomendado para ti</span>
+            <span class="reco-tag">
+              <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+              Recomendado para ti
+            </span>
             @if (eventoRecomendado(); as rec) {
               <p class="reco-title">{{ rec.nombreEvento }}</p>
               <p class="reco-meta">

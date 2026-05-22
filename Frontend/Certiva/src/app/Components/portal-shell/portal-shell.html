@@ -1,0 +1,51 @@
+<div class="portal-layout portal-estudiante">
+  <div class="portal-bg" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <header class="portal-top glass-card">
+    <a routerLink="/portal" class="portal-brand" aria-label="Ir al inicio del portal">
+      <span class="portal-logo-mark" aria-hidden="true">C</span>
+      <div class="portal-brand-text">
+        <span class="portal-badge">Portal estudiante</span>
+        <h1 class="portal-logo">Certiva</h1>
+      </div>
+    </a>
+
+    <nav class="portal-nav" aria-label="Navegación del portal">
+      <a routerLink="/portal" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <i class="fa-solid fa-house" aria-hidden="true"></i>
+        <span>Inicio</span>
+      </a>
+      <a routerLink="/portal/mis-eventos" routerLinkActive="active">
+        <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+        <span>Mis eventos</span>
+      </a>
+      <a routerLink="/portal/certificados" routerLinkActive="active">
+        <i class="fa-solid fa-award" aria-hidden="true"></i>
+        <span>Certificados</span>
+      </a>
+      <a routerLink="/portal/eventos" routerLinkActive="active">
+        <i class="fa-solid fa-compass" aria-hidden="true"></i>
+        <span>Explorar</span>
+      </a>
+    </nav>
+
+    <div class="portal-actions">
+      <div class="portal-user" title="{{ correoUsuario }}">
+        <span class="portal-avatar" aria-hidden="true">{{ iniciales }}</span>
+        <span class="portal-user-name">{{ nombreCorto }}</span>
+      </div>
+      <button type="button" class="btn-portal-exit" (click)="logout()" aria-label="Cerrar sesión">
+        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+        <span class="btn-label">Salir</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="portal-main">
+    <router-outlet />
+  </main>
+</div>

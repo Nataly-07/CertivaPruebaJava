@@ -57,7 +57,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/dashboard/**").hasRole("ADMIN")
                 .requestMatchers("/api/auditoria/**").hasRole("ADMIN")
 
-                .requestMatchers(HttpMethod.POST, "/api/check-in", "/api/inscripciones/confirmar-qr")
+                .requestMatchers(HttpMethod.POST,
+                        "/api/check-in",
+                        "/api/inscripciones/confirmar-qr",
+                        "/api/asistencias/validar")
                     .hasAnyRole("ADMIN", "MONITOR")
 
                 .requestMatchers(HttpMethod.GET, "/api/inscripciones/mis").hasRole("ESTUDIANTE")

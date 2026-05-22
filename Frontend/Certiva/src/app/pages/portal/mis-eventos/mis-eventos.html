@@ -1,0 +1,154 @@
+<div class="mis-eventos-page portal-page-card portal-estudiante">
+  <header class="page-hero-head">
+    <span class="page-hero-kicker"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Tu agenda</span>
+    <h2 class="page-hero-title">Mis eventos</h2>
+    <p class="page-hero-sub">Pase QR, progreso en curso y certificados — todo en un solo lugar.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    @for (t of tabs; track t.id) {
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="tabActiva() === t.id"
+        (click)="cambiarTab(t.id)"
+        [attr.aria-selected]="tabActiva() === t.id"
+      >
+        {{ t.label }}
+        <span class="tab-badge" [class.tab-badge--zero]="contar(t.id) === 0">{{ contar(t.id) }}</span>
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="state-loading">
+      <span class="spinner-border spinner-border-sm"></span>
+      Cargando tus eventos…
+    </div>
+  } @else if (errorMsg()) {
+    <div class="alert alert-warning">{{ errorMsg() }}</div>
+  } @else if (filtradas().length === 0) {
+    <div class="portal-empty">
+      <div class="portal-empty-icon" aria-hidden="true">
+        <i class="fa-solid fa-calendar-xmark"></i>
+      </div>
+      <h3>Aún no hay eventos aquí</h3>
+      <p>
+        @if (tabActiva() === 'INSCRITO') {
+          Cuando te inscribas a un evento, aparecerá en esta pestaña con tu pase QR.
+        } @else if (tabActiva() === 'EN_CURSO') {
+          Los eventos en los que estés participando activamente se listan aquí con tu progreso.
+        } @else {
+          Al terminar un evento podrás descargar tu certificado desde esta sección.
+        }
+      </p>
+      <a routerLink="/portal/eventos" class="btn btn-gradient btn-sm">
+        <i class="fa-solid fa-compass"></i>
+        Explorar eventos disponibles
+      </a>
+    </div>
+  } @else {
+    <div class="cards-grid">
+      @for (ins of filtradas(); track ins.idInscripcion) {
+        <article class="event-card" [class.event-card--curso]="ins.tipoEvento === 'CURSO'">
+          <div class="card-badges">
+            <span [class]="claseTipo(ins.tipoEvento)">{{ etiquetaTipo(ins.tipoEvento) }}</span>
+            <span [class]="claseModalidad(ins.modalidad)">{{ etiquetaMod(ins.modalidad) }}</span>
+          </div>
+
+          <h3 class="card-title">{{ ins.nombreEvento }}</h3>
+
+          <p class="card-instructor">
+            <i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i>
+            {{ ins.instructorNombre || 'Instructor por confirmar' }}
+          </p>
+
+          <p class="card-dates">
+            <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+            {{ ins.fechaInicio | date: 'd MMM y' }} — {{ ins.fechaFin | date: 'd MMM y' }}
+          </p>
+
+          @if (ins.fase === 'EN_CURSO') {
+            <div class="progress-block">
+              <div class="progress-label">
+                <span>Progreso del evento</span>
+                <span>{{ textoProgreso(ins) }}</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" [style.width.%]="progresoPct(ins)"></div>
+              </div>
+            </div>
+          }
+
+          <div class="card-actions">
+            @if (ins.fase === 'INSCRITO') {
+              <button
+                type="button"
+                class="btn-card btn-card--primary"
+                [disabled]="!ins.idInscripcion"
+                (click)="abrirQr(ins)"
+              >
+                <i class="fa-solid fa-qrcode"></i>
+                Ver pase QR
+              </button>
+            } @else if (ins.fase === 'EN_CURSO') {
+              @if (tieneEnlaceSesion(ins)) {
+                <a
+                  class="btn-card btn-card--primary"
+                  [href]="ins.enlaceVirtual"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <i class="fa-solid fa-video"></i>
+                  Entrar a sesión
+                </a>
+              } @else {
+                <a routerLink="/portal/eventos" class="btn-card btn-card--outline">
+                  <i class="fa-solid fa-book-open"></i>
+                  Ver material
+                </a>
+              }
+            } @else {
+              @if (ins.puedeDescargarCertificado) {
+                <button
+                  type="button"
+                  class="btn-card btn-card--success"
+                  [disabled]="descargandoId() === ins.idInscripcion"
+                  (click)="descargarCertificado(ins, $event)"
+                >
+                  <i class="fa-solid fa-file-arrow-down"></i>
+                  @if (descargandoId() === ins.idInscripcion) {
+                    Descargando…
+                  } @else {
+                    Descargar certificado
+                  }
+                </button>
+              } @else if (ins.motivoCertificadoPendiente) {
+                <p class="card-hint">{{ ins.motivoCertificadoPendiente }}</p>
+              }
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+@if (qrModal(); as ins) {
+  <div class="qr-overlay" (click)="cerrarQr()" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
+    <div class="qr-modal glass-card" (click)="$event.stopPropagation()">
+      <button type="button" class="qr-close" (click)="cerrarQr()" aria-label="Cerrar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 id="qr-modal-title" class="qr-modal-title">Pase de entrada</h3>
+      <p class="qr-modal-event">{{ ins.nombreEvento }}</p>
+      <p class="qr-modal-hint">Presenta este código en la entrada del evento.</p>
+      <app-qr-code-display
+        [data]="textoQr(ins)"
+        [size]="220"
+        caption="Pase de entrada — inscripción #{{ ins.idInscripcion }}"
+        [showUrl]="true"
+      />
+    </div>
+  </div>
+}

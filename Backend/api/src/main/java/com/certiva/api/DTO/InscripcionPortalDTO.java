@@ -21,11 +21,20 @@ public class InscripcionPortalDTO {
     private Long idEvento;
     private String nombreEvento;
     private String tipoEvento;
+    /** PRESENCIAL | VIRTUAL | HIBRIDO */
+    private String modalidad;
+    private String instructorNombre;
+    private String enlaceVirtual;
     private LocalDateTime fechaInicio;
     private LocalDateTime fechaFin;
 
     /** INSCRITO | EN_CURSO | FINALIZADO */
     private String fase;
+
+    /** Progreso pedagógico (sesiones asistidas / sesiones totales). */
+    private Integer sesionesTotales;
+    private Integer sesionesAsistidas;
+    private Integer porcentajeProgreso;
 
     private boolean puedeDescargarCertificado;
     private Long idCertificado;

@@ -18,6 +18,15 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
     List<Inscripcion> findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(Long idUsuario);
 
     @Query("""
+            SELECT i FROM Inscripcion i
+            JOIN FETCH i.evento e
+            LEFT JOIN FETCH e.usuarioCreador
+            WHERE i.usuario.idUsuario = :idUsuario
+            ORDER BY i.fechaInscripcion DESC
+            """)
+    List<Inscripcion> findMisInscripcionesConEvento(@Param("idUsuario") Long idUsuario);
+
+    @Query("""
             SELECT COUNT(i) FROM Inscripcion i
             WHERE i.evento.idEvento = :idEvento
               AND UPPER(TRIM(i.estado)) <> 'INACTIVO'

@@ -56,7 +56,16 @@
     @if (loading) {
       <p class="state-msg">Cargando catálogo…</p>
     } @else if (!eventosMostrados.length) {
-      <p class="state-msg">No hay eventos que coincidan con tu búsqueda o filtros.</p>
+      <div class="portal-empty catalog-empty">
+        <div class="portal-empty-icon">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        </div>
+        <h3>No encontramos eventos</h3>
+        <p>Prueba otro término de búsqueda o cambia el filtro de tipo.</p>
+        <button type="button" class="btn btn-dark-outline btn-sm" (click)="filtrarPorTipo('Todos')">
+          Ver todos los eventos
+        </button>
+      </div>
     } @else {
       <div class="contenedor-eventos">
         @for (evento of eventosMostrados; track evento.idEvento) {

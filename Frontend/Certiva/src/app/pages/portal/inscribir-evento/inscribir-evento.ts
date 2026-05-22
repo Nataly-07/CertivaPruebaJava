@@ -103,7 +103,12 @@ import { tap } from 'rxjs';
               <p class="small text-muted mb-2">
                 Guárdalo en tu celular y preséntalo en la entrada. El personal de apoyo lo escaneará para registrar tu asistencia.
               </p>
-              <app-qr-code-display [data]="tokenQrRegistro" [size]="180" caption="Pase de entrada" />
+              <app-qr-code-display
+                [data]="tokenQrRegistro"
+                [size]="200"
+                caption="Pase de entrada"
+                [showUrl]="true"
+              />
               <a routerLink="/portal/mis-eventos" class="btn btn-dark-outline btn-sm mt-3">Ver en Mis eventos</a>
             </div>
           }

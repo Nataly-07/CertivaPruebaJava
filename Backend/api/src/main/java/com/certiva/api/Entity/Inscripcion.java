@@ -31,9 +31,10 @@ public class Inscripcion {
     private String estado;
 
     /**
-     * Token único para QR / check-in (persistido al crear la inscripción).
+     * Referencia única de check-in: id de inscripción como texto (legado: UUID).
+     * El contenido visual del QR es la URL {@code /api/asistencias/validar?inscripcionId=…}.
      */
-    @Column(name = "token_qr", unique = true, length = 40)
+    @Column(name = "token_qr", unique = true, length = 64)
     private String tokenQr;
 
     private Boolean pagoRealizado = false;

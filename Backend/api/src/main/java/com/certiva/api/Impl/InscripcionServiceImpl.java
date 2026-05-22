@@ -1,14 +1,15 @@
 package com.certiva.api.Impl;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ import com.certiva.api.Repository.CertificadoRepository;
 import com.certiva.api.Repository.InscripcionRepository;
 import com.certiva.api.Repository.UsuarioRepository;
 import com.certiva.api.Repository.EventoRepository;
+import com.certiva.api.Util.InscripcionQrHelper;
 import com.certiva.api.Util.SecurityUsuarioHelper;
 import com.certiva.api.Service.CertificadoElegibilidadService;
 import com.certiva.api.Service.CertificadoService;
@@ -54,6 +56,7 @@ public class InscripcionServiceImpl implements InscripcionService {
     private final SecurityUsuarioHelper _securityUsuarioHelper;
     private final ModelMapper _modelMapper;
     private final ObjectMapper _objectMapper;
+    private final String _publicApiBaseUrl;
 
     public InscripcionServiceImpl(InscripcionRepository inscripcionRepository,
                                   UsuarioRepository usuarioRepository,
@@ -65,7 +68,8 @@ public class InscripcionServiceImpl implements InscripcionService {
                                   EventoService eventoService,
                                   SecurityUsuarioHelper securityUsuarioHelper,
                                   ModelMapper modelMapper,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  @Value("${certiva.api.public-base-url:http://localhost:8080}") String publicApiBaseUrl) {
         this._inscripcionRepository = inscripcionRepository;
         this._usuarioRepository = usuarioRepository;
         this._eventoRepository = eventoRepository;
@@ -77,6 +81,7 @@ public class InscripcionServiceImpl implements InscripcionService {
         this._securityUsuarioHelper = securityUsuarioHelper;
         this._modelMapper = modelMapper;
         this._objectMapper = objectMapper;
+        this._publicApiBaseUrl = publicApiBaseUrl;
     }
 
     @Override
@@ -108,8 +113,9 @@ public class InscripcionServiceImpl implements InscripcionService {
         inscripcion.setFechaInscripcion(LocalDateTime.now());
         inscripcion.setUsuario(usuario);
         inscripcion.setEvento(evento);
-        inscripcion.setTokenQr(UUID.randomUUID().toString());
 
+        inscripcion = _inscripcionRepository.save(inscripcion);
+        inscripcion.setTokenQr(String.valueOf(inscripcion.getIdInscripcion()));
         inscripcion = _inscripcionRepository.save(inscripcion);
 
         validarYPersistirRespuestas(evento, inscripcion, inscripcionDTO.getRespuestasCampos());
@@ -195,7 +201,7 @@ public class InscripcionServiceImpl implements InscripcionService {
         }
         String codigo = codigoBruto.trim();
 
-        Inscripcion inscripcion = _inscripcionRepository.findByTokenQr(codigo)
+        Inscripcion inscripcion = resolverInscripcionPorCodigo(codigo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada para el código"));
 
         String est = norm(inscripcion.getEstado());
@@ -407,7 +413,7 @@ public class InscripcionServiceImpl implements InscripcionService {
     public List<InscripcionPortalDTO> listarMisInscripciones() {
         Usuario usuario = _securityUsuarioHelper.usuarioAutenticado();
         LocalDateTime ahora = LocalDateTime.now();
-        return _inscripcionRepository.findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(usuario.getIdUsuario())
+        return _inscripcionRepository.findMisInscripcionesConEvento(usuario.getIdUsuario())
                 .stream()
                 .filter(i -> !"INACTIVO".equalsIgnoreCase(norm(i.getEstado())))
                 .map(i -> mapearPortal(i, ahora))
@@ -433,21 +439,85 @@ public class InscripcionServiceImpl implements InscripcionService {
             motivo = "El certificado estará disponible al finalizar el evento.";
         }
 
+        int sesionesTotales = calcularSesionesTotales(evento);
+        int sesionesAsistidas = calcularSesionesAsistidas(inscripcion, evento, ahora, sesionesTotales);
+        int porcentajeProgreso = sesionesTotales > 0
+                ? Math.min(100, Math.round((sesionesAsistidas * 100f) / sesionesTotales))
+                : 0;
+
         return InscripcionPortalDTO.builder()
                 .idInscripcion(inscripcion.getIdInscripcion())
                 .estado(inscripcion.getEstado())
-                .tokenQr(inscripcion.getTokenQr())
+                .tokenQr(contenidoQr(inscripcion.getIdInscripcion()))
                 .fechaInscripcion(inscripcion.getFechaInscripcion())
                 .idEvento(evento.getIdEvento())
                 .nombreEvento(evento.getNombreEvento())
                 .tipoEvento(evento.getTipoEvento() != null ? evento.getTipoEvento().name() : null)
+                .modalidad(evento.getModalidad() != null ? evento.getModalidad().name() : null)
+                .instructorNombre(nombreInstructor(evento))
+                .enlaceVirtual(evento.getEnlaceVirtual())
                 .fechaInicio(evento.getFechaInicio())
                 .fechaFin(evento.getFechaFin())
                 .fase(fase)
+                .sesionesTotales(sesionesTotales)
+                .sesionesAsistidas(sesionesAsistidas)
+                .porcentajeProgreso(porcentajeProgreso)
                 .puedeDescargarCertificado(puedeDescargar)
                 .idCertificado(certOpt.map(Certificado::getIdCertificado).orElse(null))
                 .motivoCertificadoPendiente(motivo)
                 .build();
+    }
+
+    private static String nombreInstructor(Evento evento) {
+        if (evento.getUsuarioCreador() == null) {
+            return "Por asignar";
+        }
+        String n = evento.getUsuarioCreador().getNombres() != null ? evento.getUsuarioCreador().getNombres().trim() : "";
+        String a = evento.getUsuarioCreador().getApellidos() != null ? evento.getUsuarioCreador().getApellidos().trim() : "";
+        String completo = (n + " " + a).trim();
+        return completo.isEmpty() ? "Por asignar" : completo;
+    }
+
+    /**
+     * Sesiones totales: intensidad horaria (bloques de ~4 h) o duración en días del evento.
+     */
+    private static int calcularSesionesTotales(Evento evento) {
+        if (evento.getIntensidadHoraria() != null && evento.getIntensidadHoraria() > 0) {
+            return Math.max(1, (int) Math.ceil(evento.getIntensidadHoraria() / 4.0));
+        }
+        if (evento.getFechaInicio() != null && evento.getFechaFin() != null) {
+            long dias = ChronoUnit.DAYS.between(
+                    evento.getFechaInicio().toLocalDate(),
+                    evento.getFechaFin().toLocalDate()) + 1;
+            return (int) Math.max(1, Math.min(dias, 40));
+        }
+        return 1;
+    }
+
+    /**
+     * Asistió (check-in) = 100 %; en curso = proporción temporal; inscrito sin iniciar = 0.
+     */
+    private static int calcularSesionesAsistidas(Inscripcion inscripcion, Evento evento,
+                                                 LocalDateTime ahora, int sesionesTotales) {
+        if ("ASISTIO".equalsIgnoreCase(norm(inscripcion.getEstado()))) {
+            return sesionesTotales;
+        }
+        if (evento.getFechaInicio() == null || evento.getFechaFin() == null) {
+            return 0;
+        }
+        if (ahora.isBefore(evento.getFechaInicio())) {
+            return 0;
+        }
+        if (!ahora.isBefore(evento.getFechaFin())) {
+            return sesionesTotales;
+        }
+        long totalMs = Duration.between(evento.getFechaInicio(), evento.getFechaFin()).toMillis();
+        if (totalMs <= 0) {
+            return 0;
+        }
+        long elapsedMs = Duration.between(evento.getFechaInicio(), ahora).toMillis();
+        int estimado = (int) Math.round((elapsedMs * (double) sesionesTotales) / totalMs);
+        return Math.max(0, Math.min(sesionesTotales, estimado));
     }
 
     private static String calcularFase(LocalDateTime ahora, LocalDateTime inicio, LocalDateTime fin) {
@@ -462,5 +532,17 @@ public class InscripcionServiceImpl implements InscripcionService {
 
     private static String norm(String estado) {
         return estado == null ? "" : estado.trim();
+    }
+
+    private String contenidoQr(Long idInscripcion) {
+        return InscripcionQrHelper.buildQrContent(_publicApiBaseUrl, idInscripcion);
+    }
+
+    private Optional<Inscripcion> resolverInscripcionPorCodigo(String codigo) {
+        Optional<Long> id = InscripcionQrHelper.resolveInscripcionId(codigo);
+        if (id.isPresent()) {
+            return _inscripcionRepository.findById(id.get());
+        }
+        return _inscripcionRepository.findByTokenQr(codigo);
     }
 }

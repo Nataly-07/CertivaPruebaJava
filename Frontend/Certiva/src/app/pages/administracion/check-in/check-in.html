@@ -2,17 +2,20 @@
   <div class="checkin-card glass-card">
     <a routerLink="/admin/eventos" class="back-link">← Volver al panel</a>
     <h1 class="checkin-title">Check-in por QR</h1>
-    <p class="checkin-lead">Escanea o pega el token QR de la inscripción para confirmar asistencia.</p>
+    <p class="checkin-lead">
+      Escanea el QR del estudiante o pega la URL de validación
+      (<code class="checkin-code">…/api/asistencias/validar?inscripcionId=…</code>).
+    </p>
 
     <div class="mb-3">
-      <label class="form-label-dark" for="codigoQr">Código QR / token</label>
+      <label class="form-label-dark" for="codigoQr">Código QR / URL / ID inscripción</label>
       <input
         id="codigoQr"
         type="text"
         class="form-control form-control-dark"
         [(ngModel)]="codigoQr"
         (keyup.enter)="confirmar()"
-        placeholder="UUID del QR"
+        placeholder="URL del QR o número de inscripción"
         autocomplete="off"
       />
     </div>
