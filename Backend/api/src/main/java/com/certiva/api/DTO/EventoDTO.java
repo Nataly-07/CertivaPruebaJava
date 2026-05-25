@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.certiva.api.enums.EstadoOperativoEvento;
 import com.certiva.api.enums.ModalidadEvento;
 import com.certiva.api.enums.TipoEventoEnum;
 
@@ -80,6 +81,8 @@ public class EventoDTO {
     private String firmaDigitalProfesor;
 
     private Boolean estado;
+
+    private EstadoOperativoEvento estadoOperativo;
 
     private Long idUsuarioCreador;
 

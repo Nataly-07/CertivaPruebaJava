@@ -27,6 +27,6 @@ public class AsistenciaController {
     public ResponseEntity<CheckInRespuestaDTO> validar(
             @RequestParam("inscripcionId") Long inscripcionId) {
         return ResponseEntity.ok(
-                inscripcionService.confirmarAsistenciaPorCodigoQr(String.valueOf(inscripcionId)));
+                inscripcionService.confirmarAsistenciaPorCodigoQr(String.valueOf(inscripcionId), "PRESENTE"));
     }
 }

@@ -261,9 +261,16 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Rol no encontrado"));
 
         validarPoliticaAdministradoresTrasCambioRol(usuario.getIdUsuario(), rol);
+        String rolAnterior = usuario.getRoles().stream().findFirst().map(Rol::getNombre).orElse("—");
         usuario.setRoles(Set.of(rol));
 
         usuario = _usuarioRepository.save(usuario);
+        Usuario actor = _securityUsuarioHelper.usuarioAutenticado();
+        _auditoriaService.registrarAuditoria(
+                com.certiva.api.enums.AuditoriaAccion.ROLE_CHANGE,
+                "Usuario " + idUsuario + ": " + rolAnterior + " → " + rol.getNombre(),
+                null,
+                actor);
         return mapearUsuarioDTO(usuario);
     }
 

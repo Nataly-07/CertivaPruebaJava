@@ -40,7 +40,8 @@ public class InscripcionController {
 
     @PostMapping("/confirmar-qr")
     public ResponseEntity<CheckInRespuestaDTO> confirmarQr(@Valid @RequestBody CheckInRequestDTO body) {
-        return ResponseEntity.ok(_inscripcionService.confirmarAsistenciaPorCodigoQr(body.getCodigo()));
+        return ResponseEntity.ok(
+                _inscripcionService.confirmarAsistenciaPorCodigoQr(body.getCodigo(), body.getTipoAsistencia()));
     }
 
     @GetMapping("/mis")
@@ -67,9 +68,13 @@ public class InscripcionController {
         return ResponseEntity.ok(mensaje);
     }
 
+    @PutMapping("/{id}/cancelar")
+    public ResponseEntity<String> cancelarMiInscripcion(@PathVariable Long id) {
+        return ResponseEntity.ok(_inscripcionService.cancelarMiInscripcion(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Boolean> borrarInscripcion(@PathVariable Long id) {
-        boolean eliminado = _inscripcionService.borrarInscripcion(id);
-        return ResponseEntity.ok(eliminado);
+        return ResponseEntity.ok(_inscripcionService.borrarInscripcion(id));
     }
 }

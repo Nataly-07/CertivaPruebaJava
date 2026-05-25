@@ -3,27 +3,29 @@ package com.certiva.api.DTO;
 import java.time.LocalDateTime;
 
 import com.certiva.api.enums.EstadoOperativoEvento;
-import com.certiva.api.enums.ModalidadEvento;
-import com.certiva.api.enums.TipoEventoEnum;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EventoFilaAdminDTO {
+public class ProfesorEventoTarjetaDTO {
 
     private Long idEvento;
     private String nombreEvento;
-    private TipoEventoEnum tipoEvento;
-    private ModalidadEvento modalidad;
-    private String instructorPrincipal;
-    private long inscritosActivos;
-    private Integer aforoMaximo;
-    private Boolean estado;
+    private String tipoEvento;
     private EstadoOperativoEvento estadoOperativo;
+    private long inscritosActivos;
+    private long asistenciasConfirmadas;
+    private int porcentajeAsistenciaGlobal;
     private LocalDateTime fechaInicio;
     private LocalDateTime fechaFin;
+    private String monitorNombre;
+    private String monitorApellidos;
+    /** FINALIZADO_POR_TIEMPO requiere iniciar revisión antes del cierre. */
+    private boolean requiereIniciarRevision;
 }

@@ -2,6 +2,14 @@ export type ModalidadEvento = 'PRESENCIAL' | 'VIRTUAL' | 'HIBRIDO';
 
 export type TipoEventoEnum = 'CURSO' | 'HACKATHON' | 'TALLER' | 'FERIA';
 
+export type EstadoOperativoEvento =
+  | 'PROXIMO'
+  | 'EN_CURSO'
+  | 'FINALIZADO_POR_TIEMPO'
+  | 'EN_REVISION'
+  | 'CERRADO_Y_CERTIFICADO'
+  | 'EVENT_CANCELLED';
+
 export type TipoDatoCampo = 'TEXTO' | 'NUMERO' | 'SELECT' | 'CHECKBOX' | 'URL' | 'IMAGEN';
 
 export type NivelAcademico = 'BASICO' | 'INTERMEDIO' | 'AVANZADO';
@@ -86,6 +94,7 @@ export interface EventoDTO {
   textoDiploma?: string | null;
   firmaDigitalProfesor?: string | null;
   estado?: boolean | null;
+  estadoOperativo?: EstadoOperativoEvento | null;
   idUsuarioCreador?: number | null;
   idsProfesoresColaboradores?: number[];
   idsMonitoresAsignados?: number[];
@@ -179,8 +188,17 @@ export interface EventoFilaAdminDTO {
   inscritosActivos: number;
   aforoMaximo: number;
   estado?: boolean | null;
+  estadoOperativo?: EstadoOperativoEvento | null;
   fechaInicio?: string;
   fechaFin?: string;
+}
+
+export interface EventoCierreResultadoDTO {
+  idEvento: number;
+  estadoOperativo: string;
+  certificadosEmitidos: number;
+  inscripcionesPendientesCertificado: number;
+  mensaje: string;
 }
 
 export interface EventoCupoVerificacionDTO {

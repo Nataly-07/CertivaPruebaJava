@@ -122,18 +122,14 @@ public class CertificadoServiceImpl implements CertificadoService {
 
     @Override
     public String inactivarCertificado(Long idCertificado) {
-        Certificado certificado = _certificadoRepository.findById(idCertificado)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Certificado no encontrado"));
-        _certificadoRepository.delete(certificado);
-        return "Certificado eliminado correctamente";
+        throw new OperacionNoPermitidaException(
+                "Borrado físico prohibido. Los certificados emitidos son inmutables.");
     }
 
     @Override
     public boolean borrarCertificado(Long idCertificado) {
-        Certificado certificado = _certificadoRepository.findById(idCertificado)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Certificado no encontrado"));
-        _certificadoRepository.delete(certificado);
-        return true;
+        throw new OperacionNoPermitidaException(
+                "Borrado físico prohibido. Los certificados emitidos son inmutables.");
     }
 
     @Override
@@ -142,8 +138,15 @@ public class CertificadoServiceImpl implements CertificadoService {
         Inscripcion ins = _inscripcionRepository.findById(idInscripcion)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada"));
 
-        if (!"ASISTIO".equalsIgnoreCase(ins.getEstado().trim())) {
+        if (!com.certiva.api.Util.InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado())) {
             throw new OperacionNoPermitidaException("La inscripción no tiene asistencia confirmada.");
+        }
+        com.certiva.api.enums.EstadoOperativoEvento op = com.certiva.api.Util.EstadoOperativoEventoHelper
+                .resolverOperativoVisible(ins.getEvento(), java.time.LocalDateTime.now());
+        if (op != com.certiva.api.enums.EstadoOperativoEvento.CERRADO_Y_CERTIFICADO
+                && op != com.certiva.api.enums.EstadoOperativoEvento.EN_REVISION) {
+            throw new OperacionNoPermitidaException(
+                    "Los certificados solo se emiten durante la revisión o el cierre del evento.");
         }
 
         Optional<Certificado> existente = _certificadoRepository.findFirstByUsuario_IdUsuarioAndEvento_IdEvento(

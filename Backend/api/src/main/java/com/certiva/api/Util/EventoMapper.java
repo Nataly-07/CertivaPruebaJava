@@ -54,6 +54,9 @@ public class EventoMapper {
         dto.setTextoDiploma(e.getTextoDiploma());
         dto.setFirmaDigitalProfesor(e.getFirmaDigitalProfesor());
         dto.setEstado(e.getEstado());
+        dto.setEstadoOperativo(
+                com.certiva.api.Util.EstadoOperativoEventoHelper.resolverOperativoVisible(
+                        e, java.time.LocalDateTime.now()));
         dto.setIdUsuarioCreador(e.getUsuarioCreador() != null ? e.getUsuarioCreador().getIdUsuario() : null);
 
         if (incluirStaff) {

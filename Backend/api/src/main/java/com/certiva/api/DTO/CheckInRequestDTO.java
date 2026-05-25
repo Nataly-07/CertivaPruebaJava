@@ -12,4 +12,7 @@ public class CheckInRequestDTO {
 
     @NotBlank(message = "El código QR / UUID es obligatorio")
     private String codigo;
+
+    /** PRESENTE (default) o TARDIO. */
+    private String tipoAsistencia;
 }

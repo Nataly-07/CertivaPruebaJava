@@ -1,14 +1,14 @@
 /** Etiquetas amigables para la UI (sin jerga de backend). */
 
 export const ETIQUETAS_ROL: Record<string, string> = {
-  ROLE_MONITOR: 'Personal de Apoyo (Staff)',
-  MONITOR: 'Personal de Apoyo (Staff)',
-  ROLE_PROFESOR: 'Profesores / Instructores',
-  PROFESOR: 'Profesores / Instructores',
+  ROLE_MONITOR: 'Monitor',
+  MONITOR: 'Monitor',
+  ROLE_PROFESOR: 'Profesor',
+  PROFESOR: 'Profesor',
   ROLE_ADMIN: 'Administrador',
   ADMIN: 'Administrador',
-  ROLE_ESTUDIANTE: 'Estudiantes / Participantes',
-  ESTUDIANTE: 'Estudiantes / Participantes',
+  ROLE_ESTUDIANTE: 'Estudiante',
+  ESTUDIANTE: 'Estudiante',
 };
 
 export const ETIQUETAS_TIPO_EVENTO: Record<string, string> = {

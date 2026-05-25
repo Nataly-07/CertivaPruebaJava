@@ -1,12 +1,15 @@
 package com.certiva.api.Impl;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -38,8 +41,14 @@ import com.certiva.api.DTO.EventoDTO;
 import com.certiva.api.DTO.EventoFilaAdminDTO;
 import com.certiva.api.DTO.EventoPublicoDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
+import com.certiva.api.DTO.EventoRevisionAlumnoDTO;
+import com.certiva.api.DTO.EventoRevisionPanelDTO;
+import com.certiva.api.DTO.ProfesorEventoTarjetaDTO;
+import com.certiva.api.DTO.ProfesorPanelBannerDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO.ProfesorEventoResumenDTO;
+import com.certiva.api.Service.CertificadoElegibilidadService;
+import com.certiva.api.Util.ProfesorAsistenciaHelper;
 import com.certiva.api.Entity.CampoFormulario;
 import com.certiva.api.Entity.CursoEvento;
 import com.certiva.api.Entity.Evento;
@@ -55,12 +64,20 @@ import com.certiva.api.Repository.EventoListadoJdbcRepository.CatalogoPublicoRow
 import com.certiva.api.Repository.EventoListadoJdbcRepository.EventoListadoRow;
 import com.certiva.api.Repository.EventoRepository;
 import com.certiva.api.Repository.InscripcionRepository;
+import com.certiva.api.Repository.ResultadoEvaluacionRepository;
 import com.certiva.api.Repository.UsuarioRepository;
+import com.certiva.api.Entity.Inscripcion;
 import com.certiva.api.Service.AuditoriaService;
 import com.certiva.api.Service.EventoService;
 import com.certiva.api.Util.EventoArchivoStorage;
+import com.certiva.api.Util.EventoEdicionPolicy;
 import com.certiva.api.Util.EventoMapper;
+import com.certiva.api.Util.EstadoOperativoEventoHelper;
+import com.certiva.api.Util.InscripcionEstadoHelper;
 import com.certiva.api.Util.SecurityUsuarioHelper;
+import com.certiva.api.enums.AuditoriaAccion;
+import com.certiva.api.enums.EstadoOperativoEvento;
+import com.certiva.api.Service.EventoCicloVidaService;
 import com.certiva.api.Util.TipoEventoCatalogoHelper;
 import com.certiva.api.enums.ModalidadEvento;
 import com.certiva.api.enums.TipoDatoCampo;
@@ -86,6 +103,9 @@ public class EventoServiceImpl implements EventoService {
     private final ObjectMapper _objectMapper;
     private final CertivaAppProperties _appProperties;
     private final SecurityUsuarioHelper _securityUsuarioHelper;
+    private final EventoCicloVidaService _eventoCicloVidaService;
+    private final CertificadoElegibilidadService _elegibilidadService;
+    private final ResultadoEvaluacionRepository _resultadoEvaluacionRepository;
 
     public EventoServiceImpl(EventoRepository eventoRepository,
                              EventoListadoJdbcRepository eventoListadoJdbc,
@@ -98,7 +118,10 @@ public class EventoServiceImpl implements EventoService {
                              EventoMapper eventoMapper,
                              ObjectMapper objectMapper,
                              CertivaAppProperties appProperties,
-                             SecurityUsuarioHelper securityUsuarioHelper) {
+                             SecurityUsuarioHelper securityUsuarioHelper,
+                             EventoCicloVidaService eventoCicloVidaService,
+                             CertificadoElegibilidadService elegibilidadService,
+                             ResultadoEvaluacionRepository resultadoEvaluacionRepository) {
         this._eventoRepository = eventoRepository;
         this._eventoListadoJdbc = eventoListadoJdbc;
         this._catalogoHelper = catalogoHelper;
@@ -111,6 +134,9 @@ public class EventoServiceImpl implements EventoService {
         this._objectMapper = objectMapper;
         this._appProperties = appProperties;
         this._securityUsuarioHelper = securityUsuarioHelper;
+        this._eventoCicloVidaService = eventoCicloVidaService;
+        this._elegibilidadService = elegibilidadService;
+        this._resultadoEvaluacionRepository = resultadoEvaluacionRepository;
     }
 
     @Override
@@ -125,6 +151,7 @@ public class EventoServiceImpl implements EventoService {
         Evento evento = nuevaInstancia(dto.getTipoEvento());
         aplicarCamposComunes(evento, dto);
         evento.setEstado(true);
+        evento.setEstadoOperativo(EstadoOperativoEvento.PROXIMO);
         evento.setUsuarioCreador(creador);
         aplicarDetalleEnEntidad(evento, dto);
         _catalogoHelper.asignarCatalogoSiFalta(evento);
@@ -149,7 +176,7 @@ public class EventoServiceImpl implements EventoService {
         persistirCamposDesdeCrear(evento, dto.getCamposPersonalizados());
 
         _auditoriaService.registrarAuditoria(
-                "EVENTO_CREAR",
+                AuditoriaAccion.EVENT_CREATED,
                 "El usuario " + creador.getIdUsuario() + " creó el evento \"" + evento.getNombreEvento() + "\"",
                 null,
                 creador);
@@ -249,9 +276,30 @@ public class EventoServiceImpl implements EventoService {
         dto.setInscritosActivos(inscritosActivos);
         dto.setAforoMaximo(row.aforoMaximo());
         dto.setEstado(row.estado());
+        if (Boolean.FALSE.equals(row.estado())) {
+            dto.setEstadoOperativo(EstadoOperativoEvento.EVENT_CANCELLED);
+        } else {
+            dto.setEstadoOperativo(EstadoOperativoEventoHelper.calcularPorReloj(
+                    row.fechaInicio(), row.fechaFin(), LocalDateTime.now()));
+        }
         dto.setFechaInicio(row.fechaInicio());
         dto.setFechaFin(row.fechaFin());
         return dto;
+    }
+
+    private void aplicarSoloPersonal(Evento evento, EventoDTO dto) {
+        if (dto.getIdsProfesoresColaboradores() != null || dto.getProfesoresColaboradores() != null) {
+            List<Long> idsProf = dto.getIdsProfesoresColaboradores() != null
+                    ? dto.getIdsProfesoresColaboradores()
+                    : dto.getProfesoresColaboradores().stream().map(p -> p.getIdUsuario()).toList();
+            evento.setProfesoresColaboradores(cargarUsuariosPorRolExclusivo(idsProf, ROL_PROFESOR));
+        }
+        if (dto.getIdsMonitoresAsignados() != null || dto.getMonitoresAsignados() != null) {
+            List<Long> idsMon = dto.getIdsMonitoresAsignados() != null
+                    ? dto.getIdsMonitoresAsignados()
+                    : dto.getMonitoresAsignados().stream().map(m -> m.getIdUsuario()).toList();
+            evento.setMonitoresAsignados(cargarUsuariosPorRolExclusivo(idsMon, ROL_MONITOR));
+        }
     }
 
     private static String resolverInstructorDesdeFila(EventoListadoRow row) {
@@ -291,12 +339,28 @@ public class EventoServiceImpl implements EventoService {
         normalizarStaffEnEventoDto(dto);
 
         Evento evento = cargarEventoConStaff(dto.getIdEvento());
+        EstadoOperativoEventoHelper.sincronizarAutomatico(evento, LocalDateTime.now());
 
         if (!evento.getTipoEvento().equals(dto.getTipoEvento())) {
             throw new OperacionNoPermitidaException("No se permite cambiar el tipo de evento tras su creación.");
         }
 
         Usuario editor = usuarioActualDesdeSeguridad();
+        boolean esAdmin = EventoEdicionPolicy.esAdminAutenticado();
+        EventoEdicionPolicy.validarEdicion(evento, dto, esAdmin);
+
+        if (esAdmin && evento.getEstadoOperativo() == EstadoOperativoEvento.EN_CURSO) {
+            aplicarSoloPersonal(evento, dto);
+            evento = _eventoRepository.save(evento);
+            _auditoriaService.registrarAuditoria(
+                    "EVENTO_PERSONAL_ACTUALIZAR",
+                    "Reasignación de personal en evento en curso id=" + evento.getIdEvento(),
+                    null,
+                    editor);
+            EventoDTO salidaStaff = _eventoMapper.toDto(evento, true);
+            salidaStaff.setCamposPersonalizados(camposADto(evento.getIdEvento()));
+            return salidaStaff;
+        }
 
         evento.setNombreEvento(dto.getNombreEvento());
         evento.setDescripcion(dto.getDescripcion());
@@ -354,24 +418,20 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public String inactivarEvento(Long idEvento) {
-        asegurarRolCrearEditar();
-        Evento evento = _eventoRepository.findById(idEvento)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
-        Usuario editor = usuarioActualDesdeSeguridad();
-        evento.setEstado(false);
-        _eventoRepository.save(evento);
-        _auditoriaService.registrarAuditoria(
-                "EVENTO_INACTIVAR",
-                "El usuario " + editor.getIdUsuario() + " inactivó el evento \"" + evento.getNombreEvento() + "\"",
-                null,
-                editor);
-        return "Evento inactivado correctamente";
+        cancelarEvento(idEvento);
+        return "Evento cancelado correctamente";
+    }
+
+    @Override
+    @Transactional
+    public void cancelarEvento(Long idEvento) {
+        _eventoCicloVidaService.cancelarEvento(idEvento);
     }
 
     @Override
     @Transactional
     public void borrarEventoLogico(Long idEvento) {
-        inactivarEvento(idEvento);
+        cancelarEvento(idEvento);
     }
 
     @Override
@@ -382,6 +442,11 @@ public class EventoServiceImpl implements EventoService {
         }
         Evento evento = _eventoRepository.findByCodigoDifusionAndEstadoTrue(codigoDifusion.trim())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado o inactivo"));
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (op != EstadoOperativoEvento.PROXIMO) {
+            throw new OperacionNoPermitidaException(
+                    "El evento ya no admite inscripciones (estado: " + op + ").");
+        }
         EventoCupoVerificacionDTO cupo = verificarCupo(evento.getIdEvento());
         return EventoPublicoDTO.builder()
                 .idEvento(evento.getIdEvento())
@@ -478,29 +543,60 @@ public class EventoServiceImpl implements EventoService {
         asegurarRolCrearEditar();
         Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
         LocalDateTime ahora = LocalDateTime.now();
-        List<Evento> eventos = _eventoRepository.findByUsuarioCreador_IdUsuarioOrderByFechaInicioDesc(
-                profesor.getIdUsuario());
+        LocalDate hoy = ahora.toLocalDate();
+        List<Evento> eventos = listarEventosGestionadosPorProfesor(profesor.getIdUsuario());
 
         long totalInscritos = 0;
         long activos = 0;
+        long eventosPorCertificar = 0;
         List<ProfesorEventoResumenDTO> resumenes = new ArrayList<>();
+        List<ProfesorEventoTarjetaDTO> enCurso = new ArrayList<>();
+        List<ProfesorEventoTarjetaDTO> pendientesCierre = new ArrayList<>();
+        List<ProfesorEventoTarjetaDTO> historial = new ArrayList<>();
+        ProfesorPanelBannerDTO banner = ProfesorPanelBannerDTO.builder().sesionActivaHoy(false).build();
 
         for (Evento e : eventos) {
+            EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(e, ahora);
             long inscritos = _inscripcionRepository.countCuposOcupadosPorEvento(e.getIdEvento());
+            long asistencias = _inscripcionRepository.countAsistenciasConfirmadasPorEvento(e.getIdEvento());
             totalInscritos += inscritos;
-            boolean activo = Boolean.TRUE.equals(e.getEstado())
+
+            boolean activoCalendario = Boolean.TRUE.equals(e.getEstado())
                     && e.getFechaInicio() != null
                     && e.getFechaFin() != null
                     && !ahora.isBefore(e.getFechaInicio())
                     && !ahora.isAfter(e.getFechaFin());
-            if (activo) {
+            if (activoCalendario) {
                 activos++;
             }
+
+            if (op == EstadoOperativoEvento.EN_REVISION
+                    || op == EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
+                eventosPorCertificar++;
+            }
+
+            ProfesorEventoTarjetaDTO tarjeta = construirTarjetaProfesor(cargarMonitoresSiFalta(e), op, inscritos, asistencias, ahora);
+            clasificarTarjeta(tarjeta, op, enCurso, pendientesCierre, historial);
+
+            if (op == EstadoOperativoEvento.EN_CURSO && esSesionHoy(e, hoy) && !banner.isSesionActivaHoy()) {
+                Usuario monitor = primerMonitor(cargarMonitoresSiFalta(e));
+                banner = ProfesorPanelBannerDTO.builder()
+                        .sesionActivaHoy(true)
+                        .idEvento(e.getIdEvento())
+                        .nombreEvento(e.getNombreEvento())
+                        .fechaInicio(e.getFechaInicio())
+                        .fechaFin(e.getFechaFin())
+                        .monitorNombre(monitor != null ? monitor.getNombres() : null)
+                        .monitorApellidos(monitor != null ? monitor.getApellidos() : null)
+                        .build();
+            }
+
             resumenes.add(ProfesorEventoResumenDTO.builder()
                     .idEvento(e.getIdEvento())
                     .nombreEvento(e.getNombreEvento())
                     .tipoEvento(e.getTipoEvento() != null ? e.getTipoEvento().name() : null)
-                    .activo(activo)
+                    .activo(activoCalendario)
+                    .estadoOperativo(op)
                     .inscritos(inscritos)
                     .fechaInicio(e.getFechaInicio())
                     .fechaFin(e.getFechaFin())
@@ -511,8 +607,175 @@ public class EventoServiceImpl implements EventoService {
                 .totalEventos(eventos.size())
                 .totalInscritos(totalInscritos)
                 .eventosActivos(activos)
+                .eventosPorCertificar(eventosPorCertificar)
+                .accionesPendientes(eventosPorCertificar)
+                .banner(banner)
+                .enCurso(enCurso)
+                .pendientesCierre(pendientesCierre)
+                .historial(historial)
                 .eventos(resumenes)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EventoRevisionPanelDTO obtenerRevisionCierre(Long idEvento) {
+        asegurarRolCrearEditar();
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = _eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
+        cargarStaffParaValidacion(evento);
+        asegurarProfesorGestionaEvento(evento, profesor);
+
+        LocalDateTime ahora = LocalDateTime.now();
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
+        if (op != EstadoOperativoEvento.EN_REVISION
+                && op != EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
+            throw new OperacionNoPermitidaException(
+                    "La revisión de cierre solo está disponible para eventos en revisión o finalizados por tiempo.");
+        }
+
+        List<Inscripcion> inscripciones = _inscripcionRepository.findActivasPorEventoConUsuario(idEvento);
+        List<EventoRevisionAlumnoDTO> alumnos = new ArrayList<>();
+
+        for (Inscripcion ins : inscripciones) {
+            Usuario u = ins.getUsuario();
+            Double nota = _resultadoEvaluacionRepository
+                    .findFirstByInscripcion_IdInscripcionOrderByIdDesc(ins.getIdInscripcion())
+                    .map(r -> r.getNota())
+                    .orElse(null);
+
+            int pct = ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(ins, evento, ahora);
+            boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
+            boolean elegible = _elegibilidadService.puedeEmitirCertificado(ins);
+            String motivo = elegible ? null : _elegibilidadService.motivoPendienteCertificado(ins);
+
+            alumnos.add(EventoRevisionAlumnoDTO.builder()
+                    .idInscripcion(ins.getIdInscripcion())
+                    .nombres(u.getNombres())
+                    .apellidos(u.getApellidos())
+                    .correo(u.getCorreo())
+                    .estadoInscripcion(ins.getEstado())
+                    .nota(nota)
+                    .porcentajeAsistencia(pct)
+                    .asistenciaConfirmada(asistio)
+                    .elegibleCertificado(elegible)
+                    .motivoNoElegible(motivo)
+                    .build());
+        }
+
+        long asistencias = _inscripcionRepository.countAsistenciasConfirmadasPorEvento(idEvento);
+
+        return EventoRevisionPanelDTO.builder()
+                .idEvento(idEvento)
+                .nombreEvento(evento.getNombreEvento())
+                .estadoOperativo(op)
+                .totalInscritos(inscripciones.size())
+                .asistenciasRegistradas(asistencias)
+                .alumnos(alumnos)
+                .build();
+    }
+
+    /**
+     * Evita MultipleBagFetchException: no hace JOIN FETCH de dos colecciones ManyToMany a la vez.
+     */
+    private List<Evento> listarEventosGestionadosPorProfesor(Long idProfesor) {
+        Map<Long, Evento> porId = new LinkedHashMap<>();
+        for (Evento e : _eventoRepository.findByUsuarioCreador_IdUsuarioOrderByFechaInicioDesc(idProfesor)) {
+            porId.put(e.getIdEvento(), e);
+        }
+        for (Long idEvento : _eventoRepository.findIdsEventoDondeEsColaborador(idProfesor)) {
+            if (!porId.containsKey(idEvento)) {
+                _eventoRepository.findById(idEvento).ifPresent(ev -> porId.put(idEvento, ev));
+            }
+        }
+        return porId.values().stream()
+                .sorted(Comparator.comparing(Evento::getFechaInicio, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private Evento cargarMonitoresSiFalta(Evento evento) {
+        if (evento.getMonitoresAsignados() != null && !evento.getMonitoresAsignados().isEmpty()) {
+            return evento;
+        }
+        return _eventoRepository.findByIdConMonitores(evento.getIdEvento()).orElse(evento);
+    }
+
+    private void cargarStaffParaValidacion(Evento evento) {
+        _eventoRepository.findByIdConProfesores(evento.getIdEvento())
+                .ifPresent(e -> evento.setProfesoresColaboradores(e.getProfesoresColaboradores()));
+    }
+
+    private static ProfesorEventoTarjetaDTO construirTarjetaProfesor(
+            Evento e,
+            EstadoOperativoEvento op,
+            long inscritos,
+            long asistencias,
+            LocalDateTime ahora) {
+        Usuario monitor = primerMonitor(e);
+        return ProfesorEventoTarjetaDTO.builder()
+                .idEvento(e.getIdEvento())
+                .nombreEvento(e.getNombreEvento())
+                .tipoEvento(e.getTipoEvento() != null ? e.getTipoEvento().name() : null)
+                .estadoOperativo(op)
+                .inscritosActivos(inscritos)
+                .asistenciasConfirmadas(asistencias)
+                .porcentajeAsistenciaGlobal(ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscritos))
+                .fechaInicio(e.getFechaInicio())
+                .fechaFin(e.getFechaFin())
+                .monitorNombre(monitor != null ? monitor.getNombres() : null)
+                .monitorApellidos(monitor != null ? monitor.getApellidos() : null)
+                .requiereIniciarRevision(op == EstadoOperativoEvento.FINALIZADO_POR_TIEMPO)
+                .build();
+    }
+
+    private static void clasificarTarjeta(
+            ProfesorEventoTarjetaDTO tarjeta,
+            EstadoOperativoEvento op,
+            List<ProfesorEventoTarjetaDTO> enCurso,
+            List<ProfesorEventoTarjetaDTO> pendientesCierre,
+            List<ProfesorEventoTarjetaDTO> historial) {
+        switch (op) {
+            case EN_CURSO -> enCurso.add(tarjeta);
+            case EN_REVISION, FINALIZADO_POR_TIEMPO -> pendientesCierre.add(tarjeta);
+            case CERRADO_Y_CERTIFICADO -> historial.add(tarjeta);
+            default -> {
+                if (op != EstadoOperativoEvento.EVENT_CANCELLED && op != EstadoOperativoEvento.PROXIMO) {
+                    pendientesCierre.add(tarjeta);
+                }
+            }
+        }
+    }
+
+    private static boolean esSesionHoy(Evento e, LocalDate hoy) {
+        if (e.getFechaInicio() == null || e.getFechaFin() == null) {
+            return false;
+        }
+        LocalDate inicio = e.getFechaInicio().toLocalDate();
+        LocalDate fin = e.getFechaFin().toLocalDate();
+        return !hoy.isBefore(inicio) && !hoy.isAfter(fin);
+    }
+
+    private static Usuario primerMonitor(Evento e) {
+        if (e.getMonitoresAsignados() == null || e.getMonitoresAsignados().isEmpty()) {
+            return null;
+        }
+        return e.getMonitoresAsignados().iterator().next();
+    }
+
+    private void asegurarProfesorGestionaEvento(Evento evento, Usuario profesor) {
+        if (EventoEdicionPolicy.esAdminAutenticado()) {
+            return;
+        }
+        Long id = profesor.getIdUsuario();
+        boolean creador = evento.getUsuarioCreador() != null
+                && id.equals(evento.getUsuarioCreador().getIdUsuario());
+        boolean colaborador = evento.getProfesoresColaboradores() != null
+                && evento.getProfesoresColaboradores().stream()
+                        .anyMatch(p -> id.equals(p.getIdUsuario()));
+        if (!creador && !colaborador) {
+            throw new OperacionNoPermitidaException("No tiene permiso para gestionar este evento.");
+        }
     }
 
     private void asegurarCodigoDifusion(Evento evento) {

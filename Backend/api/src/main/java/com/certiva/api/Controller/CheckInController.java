@@ -24,6 +24,7 @@ public class CheckInController {
 
     @PostMapping("/check-in")
     public ResponseEntity<CheckInRespuestaDTO> checkIn(@Valid @RequestBody CheckInRequestDTO body) {
-        return ResponseEntity.ok(inscripcionService.confirmarAsistenciaPorCodigoQr(body.getCodigo()));
+        return ResponseEntity.ok(
+                inscripcionService.confirmarAsistenciaPorCodigoQr(body.getCodigo(), body.getTipoAsistencia()));
     }
 }

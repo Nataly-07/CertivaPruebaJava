@@ -501,7 +501,7 @@ public class EventoListadoJdbcRepository {
                 SELECT i.id_evento, COUNT(*) AS total
                 FROM %s i
                 WHERE i.id_evento IN (%s)
-                  AND UPPER(TRIM(i.estado)) <> 'INACTIVO'
+                  AND UPPER(TRIM(i.estado)) NOT IN ('INACTIVO', 'CANCELLED')
                 GROUP BY i.id_evento
                 """;
 

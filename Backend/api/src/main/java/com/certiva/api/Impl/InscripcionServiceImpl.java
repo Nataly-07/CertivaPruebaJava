@@ -28,18 +28,26 @@ import com.certiva.api.Entity.Inscripcion;
 import com.certiva.api.Entity.RespuestaFormulario;
 import com.certiva.api.Entity.Usuario;
 import com.certiva.api.Exception.ConflictoOperacionException;
+import com.certiva.api.Exception.OperacionNoPermitidaException;
 import com.certiva.api.Exception.RecursoNoEncontradoException;
 import com.certiva.api.Repository.CampoFormularioRepository;
 import com.certiva.api.Repository.CertificadoRepository;
 import com.certiva.api.Repository.InscripcionRepository;
 import com.certiva.api.Repository.UsuarioRepository;
 import com.certiva.api.Repository.EventoRepository;
+import com.certiva.api.Util.EstadoOperativoEventoHelper;
+import com.certiva.api.Util.EventoEdicionPolicy;
+import com.certiva.api.Util.InscripcionEstadoHelper;
 import com.certiva.api.Util.InscripcionQrHelper;
 import com.certiva.api.Util.SecurityUsuarioHelper;
+import com.certiva.api.Service.AuditoriaService;
 import com.certiva.api.Service.CertificadoElegibilidadService;
 import com.certiva.api.Service.CertificadoService;
 import com.certiva.api.Service.EventoService;
 import com.certiva.api.Service.InscripcionService;
+import com.certiva.api.enums.AuditoriaAccion;
+import com.certiva.api.enums.EstadoAsistenciaCheckIn;
+import com.certiva.api.enums.EstadoOperativoEvento;
 import com.certiva.api.enums.TipoDatoCampo;
 
 @Service
@@ -57,6 +65,7 @@ public class InscripcionServiceImpl implements InscripcionService {
     private final ModelMapper _modelMapper;
     private final ObjectMapper _objectMapper;
     private final String _publicApiBaseUrl;
+    private final AuditoriaService _auditoriaService;
 
     public InscripcionServiceImpl(InscripcionRepository inscripcionRepository,
                                   UsuarioRepository usuarioRepository,
@@ -69,6 +78,7 @@ public class InscripcionServiceImpl implements InscripcionService {
                                   SecurityUsuarioHelper securityUsuarioHelper,
                                   ModelMapper modelMapper,
                                   ObjectMapper objectMapper,
+                                  AuditoriaService auditoriaService,
                                   @Value("${certiva.api.public-base-url:http://localhost:8080}") String publicApiBaseUrl) {
         this._inscripcionRepository = inscripcionRepository;
         this._usuarioRepository = usuarioRepository;
@@ -82,6 +92,7 @@ public class InscripcionServiceImpl implements InscripcionService {
         this._modelMapper = modelMapper;
         this._objectMapper = objectMapper;
         this._publicApiBaseUrl = publicApiBaseUrl;
+        this._auditoriaService = auditoriaService;
     }
 
     @Override
@@ -101,6 +112,11 @@ public class InscripcionServiceImpl implements InscripcionService {
         if (Boolean.FALSE.equals(evento.getEstado())) {
             throw new ConflictoOperacionException("El evento no está activo.");
         }
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (op != EstadoOperativoEvento.PROXIMO) {
+            throw new ConflictoOperacionException(
+                    "Solo puede inscribirse a eventos en estado Próximo.");
+        }
 
         if (!_eventoService.verificarCupo(evento.getIdEvento()).isHayCupoDisponible()) {
             throw new ConflictoOperacionException("Cupo del evento agotado (aforo completo).");
@@ -108,7 +124,7 @@ public class InscripcionServiceImpl implements InscripcionService {
 
         boolean gratuito = evento.getCosto() == null || evento.getCosto() <= 0.0;
         Inscripcion inscripcion = new Inscripcion();
-        inscripcion.setEstado(gratuito ? "APROBADA" : "PENDIENTE");
+        inscripcion.setEstado(gratuito ? InscripcionEstadoHelper.APROBADA : InscripcionEstadoHelper.PENDIENTE);
         inscripcion.setPagoRealizado(gratuito);
         inscripcion.setFechaInscripcion(LocalDateTime.now());
         inscripcion.setUsuario(usuario);
@@ -179,77 +195,164 @@ public class InscripcionServiceImpl implements InscripcionService {
     public String inactivarInscripcion(Long idInscripcion) {
         Inscripcion inscripcion = _inscripcionRepository.findById(idInscripcion)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada"));
-        inscripcion.setEstado("INACTIVO");
+        inscripcion.setEstado(InscripcionEstadoHelper.CANCELLED);
         _inscripcionRepository.save(inscripcion);
-        return "Inscripción inactivada correctamente";
+        return "Inscripción cancelada correctamente";
+    }
+
+    @Override
+    @Transactional
+    public String cancelarMiInscripcion(Long idInscripcion) {
+        Usuario usuario = _securityUsuarioHelper.usuarioAutenticado();
+        Inscripcion inscripcion = _inscripcionRepository.findById(idInscripcion)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada"));
+        if (!inscripcion.getUsuario().getIdUsuario().equals(usuario.getIdUsuario())) {
+            throw new OperacionNoPermitidaException("No puede cancelar inscripciones de otro usuario.");
+        }
+        Evento evento = inscripcion.getEvento();
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (op != EstadoOperativoEvento.PROXIMO) {
+            throw new OperacionNoPermitidaException(
+                    "No puede cancelar la inscripción cuando el evento ya está en curso o finalizado.");
+        }
+        if (InscripcionEstadoHelper.esCancelada(inscripcion.getEstado())) {
+            return "La inscripción ya estaba cancelada.";
+        }
+        inscripcion.setEstado(InscripcionEstadoHelper.CANCELLED);
+        _inscripcionRepository.save(inscripcion);
+        _auditoriaService.registrarAuditoria(
+                AuditoriaAccion.INSCRIPCION_CANCELLED,
+                "Inscripción " + idInscripcion + " cancelada por el estudiante",
+                null,
+                usuario);
+        return "Inscripción cancelada; el cupo quedó liberado.";
     }
 
     @Override
     @Transactional
     public boolean borrarInscripcion(Long idInscripcion) {
-        Inscripcion inscripcion = _inscripcionRepository.findById(idInscripcion)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada"));
-        _inscripcionRepository.delete(inscripcion);
-        return true;
+        throw new OperacionNoPermitidaException(
+                "Borrado físico prohibido. Use cancelación (soft delete).");
     }
 
     @Override
     @Transactional
-    public CheckInRespuestaDTO confirmarAsistenciaPorCodigoQr(String codigoBruto) {
+    public CheckInRespuestaDTO confirmarAsistenciaPorCodigoQr(String codigoBruto, String tipoAsistencia) {
+        Usuario operador = _securityUsuarioHelper.usuarioAutenticado();
         if (codigoBruto == null || codigoBruto.isBlank()) {
+            registrarCheckinFallido(operador, "Código vacío");
             throw new RecursoNoEncontradoException("Código inválido");
         }
         String codigo = codigoBruto.trim();
 
-        Inscripcion inscripcion = resolverInscripcionPorCodigo(codigo)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada para el código"));
+        Inscripcion inscripcion = resolverInscripcionPorCodigo(codigo).orElse(null);
+        if (inscripcion == null) {
+            registrarCheckinFallido(operador, "Inscripción no encontrada: " + codigo);
+            throw new RecursoNoEncontradoException("Inscripción no encontrada para el código");
+        }
 
-        String est = norm(inscripcion.getEstado());
+        try {
+            return ejecutarCheckIn(inscripcion, tipoAsistencia, operador);
+        } catch (ConflictoOperacionException | OperacionNoPermitidaException ex) {
+            registrarCheckinFallido(operador, ex.getMessage());
+            throw ex;
+        }
+    }
 
-        if ("ASISTIO".equalsIgnoreCase(est)) {
-            var cert = _certificadoService.buscarPorUsuarioYEvento(
-                    inscripcion.getUsuario().getIdUsuario(),
-                    inscripcion.getEvento().getIdEvento());
+    private CheckInRespuestaDTO ejecutarCheckIn(Inscripcion inscripcion, String tipoAsistencia, Usuario operador) {
+        Evento evento = inscripcion.getEvento();
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (op != EstadoOperativoEvento.EN_CURSO) {
+            throw new ConflictoOperacionException(
+                    "Check-in solo permitido mientras el evento está en curso.");
+        }
+
+        validarMonitorAsignadoAlEvento(evento, operador);
+
+        String est = InscripcionEstadoHelper.norm(inscripcion.getEstado());
+
+        if (InscripcionEstadoHelper.tieneAsistenciaConfirmada(est)) {
             return CheckInRespuestaDTO.builder()
-                    .mensaje("La asistencia ya estaba registrada.")
+                    .mensaje("La asistencia ya estaba registrada (" + est + ").")
                     .idInscripcion(inscripcion.getIdInscripcion())
                     .estadoInscripcion(inscripcion.getEstado())
-                    .codigoCertificado(cert.map(CertificadoDTO::getCodigoValidacion).orElse(null))
-                    .idCertificado(cert.map(CertificadoDTO::getIdCertificado).orElse(null))
                     .build();
         }
 
-        if ("INACTIVO".equalsIgnoreCase(est)) {
-            throw new ConflictoOperacionException("La inscripción está inactiva.");
+        if (InscripcionEstadoHelper.esCancelada(est)) {
+            throw new ConflictoOperacionException("La inscripción está cancelada.");
         }
 
-        if ("PENDIENTE".equalsIgnoreCase(est)) {
+        if (InscripcionEstadoHelper.PENDIENTE.equals(est)) {
             throw new ConflictoOperacionException(
-                    "La inscripción aún no está aprobada. El estudiante debe completar el pago o la aprobación.");
+                    "La inscripción aún no está aprobada. Complete el pago o la aprobación.");
         }
 
-        inscripcion.setEstado("ASISTIO");
+        String estadoAsistencia = resolverEstadoAsistencia(tipoAsistencia);
+        inscripcion.setEstado(estadoAsistencia);
         _inscripcionRepository.save(inscripcion);
 
-        String certificadoPendiente = _elegibilidadService.motivoPendienteCertificado(inscripcion);
-        if (certificadoPendiente != null) {
-            return CheckInRespuestaDTO.builder()
-                    .mensaje("Asistencia registrada. " + certificadoPendiente)
-                    .idInscripcion(inscripcion.getIdInscripcion())
-                    .estadoInscripcion(inscripcion.getEstado())
-                    .certificadoPendienteMotivo(certificadoPendiente)
-                    .build();
-        }
+        _auditoriaService.registrarAuditoria(
+                AuditoriaAccion.CHECKIN_SUCCESS,
+                "Check-in " + estadoAsistencia + " — inscripción " + inscripcion.getIdInscripcion()
+                        + " evento " + evento.getIdEvento(),
+                null,
+                operador);
 
-        var certGuardado = _certificadoService.emitirCertificadoPorAsistencia(inscripcion.getIdInscripcion());
-
+        String motivoCert = _elegibilidadService.motivoPendienteCertificado(inscripcion);
         return CheckInRespuestaDTO.builder()
-                .mensaje("Asistencia registrada y certificado emitido.")
+                .mensaje("Asistencia registrada: " + estadoAsistencia + "."
+                        + (motivoCert != null ? " " + motivoCert
+                        : " El certificado se emitirá al cerrar el evento."))
                 .idInscripcion(inscripcion.getIdInscripcion())
                 .estadoInscripcion(inscripcion.getEstado())
-                .codigoCertificado(certGuardado.getCodigoValidacion())
-                .idCertificado(certGuardado.getIdCertificado())
+                .certificadoPendienteMotivo(motivoCert)
                 .build();
+    }
+
+    private void validarMonitorAsignadoAlEvento(Evento evento, Usuario operador) {
+        if (EventoEdicionPolicy.esAdminAutenticado()) {
+            return;
+        }
+        boolean esMonitor = operador.getRoles().stream()
+                .anyMatch(r -> "ROLE_MONITOR".equals(r.getNombre()));
+        if (!esMonitor) {
+            return;
+        }
+        _eventoRepository.findByIdConMonitores(evento.getIdEvento()).ifPresent(e -> {
+            boolean asignado = e.getMonitoresAsignados().stream()
+                    .anyMatch(m -> m.getIdUsuario().equals(operador.getIdUsuario()));
+            if (!asignado) {
+                throw new OperacionNoPermitidaException(
+                        "No está asignado como monitor de este evento.");
+            }
+        });
+    }
+
+    private static String resolverEstadoAsistencia(String tipoAsistencia) {
+        if (tipoAsistencia == null || tipoAsistencia.isBlank()) {
+            return InscripcionEstadoHelper.PRESENTE;
+        }
+        String t = tipoAsistencia.trim().toUpperCase();
+        if ("TARDIO".equals(t) || "TARDÍO".equalsIgnoreCase(tipoAsistencia.trim())) {
+            return InscripcionEstadoHelper.TARDIO;
+        }
+        if ("AUSENTE".equals(t)) {
+            return InscripcionEstadoHelper.AUSENTE;
+        }
+        try {
+            return EstadoAsistenciaCheckIn.valueOf(t).name();
+        } catch (IllegalArgumentException ex) {
+            return InscripcionEstadoHelper.PRESENTE;
+        }
+    }
+
+    private void registrarCheckinFallido(Usuario operador, String motivo) {
+        _auditoriaService.registrarAuditoria(
+                AuditoriaAccion.CHECKIN_DENIED,
+                motivo,
+                null,
+                operador);
     }
 
     private List<RespuestaCampoDTO> respuestasADto(Inscripcion inscripcion) {
@@ -415,7 +518,7 @@ public class InscripcionServiceImpl implements InscripcionService {
         LocalDateTime ahora = LocalDateTime.now();
         return _inscripcionRepository.findMisInscripcionesConEvento(usuario.getIdUsuario())
                 .stream()
-                .filter(i -> !"INACTIVO".equalsIgnoreCase(norm(i.getEstado())))
+                .filter(i -> !InscripcionEstadoHelper.esCancelada(i.getEstado()))
                 .map(i -> mapearPortal(i, ahora))
                 .toList();
     }
@@ -427,16 +530,16 @@ public class InscripcionServiceImpl implements InscripcionService {
                 evento.getIdEvento());
 
         String fase = calcularFase(ahora, evento.getFechaInicio(), evento.getFechaFin());
-        boolean puedeDescargar = certOpt.isPresent();
+        EstadoOperativoEvento opEvento = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
+        boolean eventoCerrado = opEvento == EstadoOperativoEvento.CERRADO_Y_CERTIFICADO;
+        boolean puedeDescargar = certOpt.isPresent() && eventoCerrado;
         String motivo = null;
-        if (!puedeDescargar && "FINALIZADO".equals(fase)) {
-            if (_elegibilidadService.puedeEmitirCertificado(inscripcion)) {
-                puedeDescargar = true;
-            } else {
-                motivo = _elegibilidadService.motivoPendienteCertificado(inscripcion);
-            }
-        } else if (!puedeDescargar && !"FINALIZADO".equals(fase)) {
-            motivo = "El certificado estará disponible al finalizar el evento.";
+        if (!puedeDescargar && eventoCerrado) {
+            motivo = _elegibilidadService.motivoPendienteCertificado(inscripcion);
+        } else if (!puedeDescargar && opEvento == EstadoOperativoEvento.EN_REVISION) {
+            motivo = "El certificado estará disponible tras el cierre oficial del evento.";
+        } else if (!puedeDescargar) {
+            motivo = "El certificado estará disponible al cerrar y certificar el evento.";
         }
 
         int sesionesTotales = calcularSesionesTotales(evento);
@@ -499,7 +602,7 @@ public class InscripcionServiceImpl implements InscripcionService {
      */
     private static int calcularSesionesAsistidas(Inscripcion inscripcion, Evento evento,
                                                  LocalDateTime ahora, int sesionesTotales) {
-        if ("ASISTIO".equalsIgnoreCase(norm(inscripcion.getEstado()))) {
+        if (InscripcionEstadoHelper.tieneAsistenciaConfirmada(inscripcion.getEstado())) {
             return sesionesTotales;
         }
         if (evento.getFechaInicio() == null || evento.getFechaFin() == null) {

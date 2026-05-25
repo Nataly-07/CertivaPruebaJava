@@ -81,6 +81,11 @@ export const routes: Routes = [
     canActivate: [authGuard, checkInGuard],
   },
   {
+    path: 'monitor/checkin',
+    redirectTo: '/admin/check-in',
+    pathMatch: 'full',
+  },
+  {
     path: 'admin/certificados',
     loadComponent: () => import('./pages/administracion/certificados/certificados').then(m => m.Certificados),
     canActivate: [authGuard, adminGuard],

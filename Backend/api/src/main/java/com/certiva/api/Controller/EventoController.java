@@ -25,7 +25,10 @@ import com.certiva.api.DTO.EventoCupoVerificacionDTO;
 import com.certiva.api.DTO.EventoDTO;
 import com.certiva.api.DTO.EventoFilaAdminDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
+import com.certiva.api.DTO.EventoCierreResultadoDTO;
+import com.certiva.api.DTO.EventoRevisionPanelDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
+import com.certiva.api.Service.EventoCicloVidaService;
 import com.certiva.api.Service.EventoService;
 import com.certiva.api.enums.ModalidadEvento;
 import com.certiva.api.enums.TipoEventoEnum;
@@ -37,9 +40,11 @@ import jakarta.validation.Valid;
 public class EventoController {
 
     private final EventoService _eventoService;
+    private final EventoCicloVidaService _eventoCicloVidaService;
 
-    public EventoController(EventoService eventoService) {
+    public EventoController(EventoService eventoService, EventoCicloVidaService eventoCicloVidaService) {
         this._eventoService = eventoService;
+        this._eventoCicloVidaService = eventoCicloVidaService;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -54,6 +59,11 @@ public class EventoController {
     @GetMapping("/mi-panel")
     public ResponseEntity<ProfesorPanelDTO> panelProfesor() {
         return ResponseEntity.ok(_eventoService.obtenerPanelProfesor());
+    }
+
+    @GetMapping("/mi-panel/revision/{id}")
+    public ResponseEntity<EventoRevisionPanelDTO> revisionCierre(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoService.obtenerRevisionCierre(id));
     }
 
     @GetMapping("/resumen-tipos")
@@ -109,9 +119,31 @@ public class EventoController {
         return ResponseEntity.ok(_eventoService.inactivarEvento(id));
     }
 
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<String> cancelarEvento(@PathVariable Long id) {
+        _eventoService.cancelarEvento(id);
+        return ResponseEntity.ok("Evento cancelado correctamente");
+    }
+
+    @PostMapping("/{id}/iniciar-revision")
+    public ResponseEntity<String> iniciarRevision(@PathVariable Long id) {
+        _eventoCicloVidaService.iniciarRevision(id);
+        return ResponseEntity.ok("Revisión académica iniciada");
+    }
+
+    @PostMapping("/{id}/cerrar-y-certificar")
+    public ResponseEntity<EventoCierreResultadoDTO> cerrarYCertificar(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoCicloVidaService.cerrarEventoYCertificar(id));
+    }
+
+    @PostMapping("/{id}/forzar-cierre")
+    public ResponseEntity<EventoCierreResultadoDTO> forzarCierre(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoCicloVidaService.forzarCierreAdministrador(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> borrarEvento(@PathVariable Long id) {
         _eventoService.borrarEventoLogico(id);
-        return ResponseEntity.ok("Evento desactivado correctamente");
+        return ResponseEntity.ok("Evento cancelado (soft delete)");
     }
 }

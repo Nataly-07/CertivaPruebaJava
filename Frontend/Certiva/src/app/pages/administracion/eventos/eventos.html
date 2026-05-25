@@ -214,7 +214,7 @@
                 <th>Instructor principal</th>
                 <th>Modalidad</th>
                 <th>Cupos del evento</th>
-                <th>Estado</th>
+                <th>Estado operativo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -234,12 +234,15 @@
                     <span class="text-muted"> / {{ ev.aforoMaximo }}</span>
                   </td>
                   <td>
-                    <span [class]="ev.estado ? 'badge-active' : 'badge-inactive'">
-                      {{ ev.estado ? 'Activo' : 'Inactivo' }}
-                    </span>
+                    <span class="badge-estado-op">{{ etiquetaEstadoOp(ev.estadoOperativo) }}</span>
                   </td>
                   <td>
                     <div class="action-buttons">
+                      @if (authService.isAdmin() && ev.estadoOperativo !== 'CERRADO_Y_CERTIFICADO' && ev.estadoOperativo !== 'EVENT_CANCELLED') {
+                        <button type="button" class="btn-action btn-edit" (click)="forzarCierre(ev)" title="Forzar cierre">
+                          Cerrar
+                        </button>
+                      }
                       @if (puedeCrearEditar) {
                         <button type="button" class="btn-action btn-edit" (click)="openEditModal(ev)" title="Editar">
                           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

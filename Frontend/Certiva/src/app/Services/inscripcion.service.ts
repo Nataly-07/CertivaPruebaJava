@@ -19,9 +19,13 @@ export class InscripcionService {
     return this.http.post<CrearInscripcionDTO>(this.baseUrl, dto);
   }
 
-  checkIn(codigoQr: string): Observable<CheckInRespuestaDTO> {
+  checkIn(codigoQr: string, tipoAsistencia: 'PRESENTE' | 'TARDIO' = 'PRESENTE'): Observable<CheckInRespuestaDTO> {
     const codigo = normalizarCodigoQr(codigoQr);
-    return this.http.post<CheckInRespuestaDTO>(`${environment.API_URL}check-in`, { codigo });
+    return this.http.post<CheckInRespuestaDTO>(`${environment.API_URL}check-in`, { codigo, tipoAsistencia });
+  }
+
+  cancelarInscripcion(idInscripcion: number): Observable<string> {
+    return this.http.put(`${this.baseUrl}/${idInscripcion}/cancelar`, {}, { responseType: 'text' });
   }
 
   /** Valida asistencia por id de inscripción (mismo flujo que el QR escaneado). */

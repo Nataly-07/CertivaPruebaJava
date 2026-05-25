@@ -86,6 +86,13 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
     List<Evento> findByUsuarioCreador_IdUsuarioOrderByFechaInicioDesc(Long idUsuario);
 
+    @Query("""
+            SELECT DISTINCT e.idEvento FROM Evento e
+            JOIN e.profesoresColaboradores p
+            WHERE p.idUsuario = :idUsuario
+            """)
+    List<Long> findIdsEventoDondeEsColaborador(@Param("idUsuario") Long idUsuario);
+
     /**
      * Misma carga que {@link #buscarConFiltros}: sin FETCH de colecciones ManyToMany
      * (evita duplicados y errores al hidratar subclases JOINED en el listado admin).

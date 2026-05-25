@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.certiva.api.enums.EstadoOperativoEvento;
 import com.certiva.api.enums.ModalidadEvento;
 import com.certiva.api.enums.TipoEventoEnum;
 
@@ -98,7 +99,12 @@ public abstract class Evento {
     @Column(name = "firma_digital_profesor", length = 500)
     private String firmaDigitalProfesor;
 
+    /** Publicación / catálogo (false = evento retirado). */
     private Boolean estado = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_operativo", length = 40, nullable = false)
+    private EstadoOperativoEvento estadoOperativo = EstadoOperativoEvento.PROXIMO;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_creador", nullable = false)
@@ -124,6 +130,9 @@ public abstract class Evento {
     void prePersistDefaults() {
         if (estado == null) {
             estado = true;
+        }
+        if (estadoOperativo == null) {
+            estadoOperativo = EstadoOperativoEvento.PROXIMO;
         }
         if (costo == null) {
             costo = 0.0;

@@ -3,9 +3,43 @@
     <a routerLink="/admin/eventos" class="back-link">← Volver al panel</a>
     <h1 class="checkin-title">Check-in por QR</h1>
     <p class="checkin-lead">
-      Escanea el QR del estudiante o pega la URL de validación
+      Active la cámara para escanear el pase del estudiante o ingrese la URL
       (<code class="checkin-code">…/api/asistencias/validar?inscripcionId=…</code>).
     </p>
+
+    <div class="mb-3 d-flex gap-2 flex-wrap">
+      @if (!escaneando) {
+        <button type="button" class="btn btn-outline-light btn-sm" (click)="iniciarCamara()">
+          Activar cámara
+        </button>
+      } @else {
+        <button type="button" class="btn btn-outline-warning btn-sm" (click)="detenerCamara()">
+          Detener cámara
+        </button>
+      }
+    </div>
+
+    @if (camaraError) {
+      <div class="alert alert-warning py-2 small">{{ camaraError }}</div>
+    }
+
+    @if (escaneando) {
+      <div class="checkin-video-wrap mb-3">
+        <video id="checkin-video" class="checkin-video" playsinline muted></video>
+      </div>
+    }
+
+    <div class="mb-3">
+      <label class="form-label-dark" for="tipoAsistencia">Estado de ingreso</label>
+      <select
+        id="tipoAsistencia"
+        class="form-select form-control-dark"
+        [(ngModel)]="tipoAsistencia"
+      >
+        <option value="PRESENTE">Presente</option>
+        <option value="TARDIO">Tardío</option>
+      </select>
+    </div>
 
     <div class="mb-3">
       <label class="form-label-dark" for="codigoQr">Código QR / URL / ID inscripción</label>
@@ -30,8 +64,8 @@
         @if (resultado.estadoInscripcion) {
           <div>Estado: {{ resultado.estadoInscripcion }}</div>
         }
-        @if (resultado.codigoCertificado) {
-          <div class="small mt-1">Certificado: {{ resultado.codigoCertificado }}</div>
+        @if (resultado.certificadoPendienteMotivo) {
+          <div class="small mt-1">{{ resultado.certificadoPendienteMotivo }}</div>
         }
       </div>
     }

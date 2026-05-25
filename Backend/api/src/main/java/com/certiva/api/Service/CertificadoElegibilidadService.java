@@ -8,6 +8,7 @@ import com.certiva.api.Entity.Inscripcion;
 import com.certiva.api.Entity.ResultadoEvaluacion;
 import com.certiva.api.Exception.OperacionNoPermitidaException;
 import com.certiva.api.Repository.ResultadoEvaluacionRepository;
+import com.certiva.api.Util.InscripcionEstadoHelper;
 import com.certiva.api.enums.TipoEventoEnum;
 
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class CertificadoElegibilidadService {
         if (evento == null) {
             throw new OperacionNoPermitidaException("Evento no asociado a la inscripción.");
         }
-        if (!"ASISTIO".equalsIgnoreCase(norm(inscripcion.getEstado()))) {
+        if (!InscripcionEstadoHelper.tieneAsistenciaConfirmada(inscripcion.getEstado())) {
             throw new OperacionNoPermitidaException("La asistencia debe estar confirmada para certificar.");
         }
 

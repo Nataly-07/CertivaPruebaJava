@@ -41,6 +41,7 @@ import {
   etiquetaTipoCampo,
   etiquetaTipoEvento,
 } from '../../../constants/ui-labels';
+import { etiquetaEstadoEvento } from '../../../constants/estado-evento';
 import { TARJETAS_TIPO_EVENTO, TarjetaTipoEventoConfig } from '../../../constants/evento-tipo-cards';
 import { URL_MAX_LENGTH, urlFlexibleValidator } from '../../../validators/url.validators';
 
@@ -104,6 +105,7 @@ export class Eventos implements OnInit {
   readonly nivelesCurso: NivelAcademico[] = ['BASICO', 'INTERMEDIO', 'AVANZADO'];
 
   readonly etiquetaTipo = etiquetaTipoEvento;
+  readonly etiquetaEstadoOp = etiquetaEstadoEvento;
   readonly etiquetaMod = etiquetaModalidad;
   readonly etiquetaCatFeria = etiquetaCategoriaFeria;
   readonly etiquetaNivel = etiquetaNivelCurso;
@@ -613,12 +615,25 @@ export class Eventos implements OnInit {
   }
 
   desactivar(ev: EventoFilaAdminDTO): void {
-    if (!confirm(`¿Desactivar el evento "${ev.nombreEvento}"?`)) {
+    if (!confirm(`¿Cancelar el evento "${ev.nombreEvento}"? (soft delete)`)) {
       return;
     }
-    this.eventoService.eliminarLogico(ev.idEvento).subscribe({
+    this.eventoService.cancelarEvento(ev.idEvento).subscribe({
       next: () => this.loadDashboardData(),
-      error: () => (this.errorMsg = 'No se pudo desactivar el evento.'),
+      error: err => (this.errorMsg = err?.error?.mensaje || 'No se pudo cancelar el evento.'),
+    });
+  }
+
+  forzarCierre(ev: EventoFilaAdminDTO): void {
+    if (!confirm(`¿Forzar cierre y certificación de "${ev.nombreEvento}"?`)) {
+      return;
+    }
+    this.eventoService.forzarCierre(ev.idEvento).subscribe({
+      next: res => {
+        this.formAlert = res.mensaje;
+        this.loadDashboardData();
+      },
+      error: err => (this.errorMsg = err?.error?.mensaje || 'No se pudo forzar el cierre.'),
     });
   }
 

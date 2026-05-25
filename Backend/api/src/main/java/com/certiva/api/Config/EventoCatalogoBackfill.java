@@ -8,7 +8,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.certiva.api.Entity.Evento;
 import com.certiva.api.Repository.EventoRepository;
@@ -27,30 +29,41 @@ public class EventoCatalogoBackfill implements CommandLineRunner {
     private final EventoRepository eventoRepository;
     private final TipoEventoCatalogoHelper catalogoHelper;
     private final JdbcTemplate jdbcTemplate;
+    private final EventoSchemaMigrationHelper schemaMigration;
+    private final TransactionTemplate txNueva;
 
     public EventoCatalogoBackfill(EventoRepository eventoRepository,
                                   TipoEventoCatalogoHelper catalogoHelper,
-                                  JdbcTemplate jdbcTemplate) {
+                                  JdbcTemplate jdbcTemplate,
+                                  EventoSchemaMigrationHelper schemaMigration,
+                                  PlatformTransactionManager transactionManager) {
         this.eventoRepository = eventoRepository;
         this.catalogoHelper = catalogoHelper;
         this.jdbcTemplate = jdbcTemplate;
+        this.schemaMigration = schemaMigration;
+        this.txNueva = new TransactionTemplate(transactionManager);
+        this.txNueva.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Override
-    @Transactional
     public void run(String... args) {
         try {
-            catalogoHelper.asegurarCatalogoBase();
-            asegurarColumnaTipoEventoEnEvento();
-            repararFilasHijasJoined();
-            rellenarCatalogoEnEventos();
-            intentarRestriccionNotNull();
+            txNueva.executeWithoutResult(status -> ejecutarBackfill());
         } catch (Exception ex) {
             log.error(
                     "Backfill de catálogo falló; el API sigue activo. Revise columnas fecha_inicio/fecha_fin y tabla usuario: {}",
                     ex.getMessage(),
                     ex);
         }
+    }
+
+    private void ejecutarBackfill() {
+        schemaMigration.asegurarColumnaEstadoOperativo();
+        catalogoHelper.asegurarCatalogoBase();
+        asegurarColumnaTipoEventoEnEvento();
+        repararFilasHijasJoined();
+        rellenarCatalogoEnEventos();
+        intentarRestriccionNotNull();
     }
 
     /** Eventos legados sin discriminante en columna tipo_evento. */

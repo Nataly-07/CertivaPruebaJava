@@ -11,10 +11,11 @@ import {
   EventoCatalogoPublicoDTO,
   EventoPublicoDTO,
   EventoResumenTipoDTO,
+  EventoCierreResultadoDTO,
   ModalidadEvento,
   TipoEventoEnum,
 } from '../Models/evento-dto';
-import { ProfesorPanelDTO } from '../Models/portal-dto';
+import { EventoRevisionPanelDTO, ProfesorPanelDTO } from '../Models/portal-dto';
 import { EventoPublico } from '../Models/evento-publico';
 
 export interface ListarEventosFiltros {
@@ -138,5 +139,25 @@ export class EventoService {
 
   obtenerPanelProfesor(): Observable<ProfesorPanelDTO> {
     return this.http.get<ProfesorPanelDTO>(`${this.baseUrl}/mi-panel`);
+  }
+
+  obtenerRevisionCierre(idEvento: number): Observable<EventoRevisionPanelDTO> {
+    return this.http.get<EventoRevisionPanelDTO>(`${this.baseUrl}/mi-panel/revision/${idEvento}`);
+  }
+
+  cancelarEvento(id: number): Observable<string> {
+    return this.http.post(`${this.baseUrl}/${id}/cancelar`, {}, { responseType: 'text' });
+  }
+
+  iniciarRevision(id: number): Observable<string> {
+    return this.http.post(`${this.baseUrl}/${id}/iniciar-revision`, {}, { responseType: 'text' });
+  }
+
+  cerrarYCertificar(id: number): Observable<EventoCierreResultadoDTO> {
+    return this.http.post<EventoCierreResultadoDTO>(`${this.baseUrl}/${id}/cerrar-y-certificar`, {});
+  }
+
+  forzarCierre(id: number): Observable<EventoCierreResultadoDTO> {
+    return this.http.post<EventoCierreResultadoDTO>(`${this.baseUrl}/${id}/forzar-cierre`, {});
   }
 }

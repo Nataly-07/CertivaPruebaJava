@@ -17,6 +17,24 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
 
     List<Inscripcion> findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(Long idUsuario);
 
+    List<Inscripcion> findByEvento_IdEvento(Long idEvento);
+
+    @Query("""
+            SELECT i FROM Inscripcion i
+            JOIN FETCH i.usuario u
+            WHERE i.evento.idEvento = :idEvento
+              AND UPPER(TRIM(i.estado)) NOT IN ('INACTIVO', 'CANCELLED')
+            ORDER BY u.apellidos ASC, u.nombres ASC
+            """)
+    List<Inscripcion> findActivasPorEventoConUsuario(@Param("idEvento") Long idEvento);
+
+    @Query("""
+            SELECT COUNT(i) FROM Inscripcion i
+            WHERE i.evento.idEvento = :idEvento
+              AND UPPER(TRIM(i.estado)) IN ('ASISTIO', 'PRESENTE', 'TARDIO')
+            """)
+    long countAsistenciasConfirmadasPorEvento(@Param("idEvento") Long idEvento);
+
     @Query("""
             SELECT i FROM Inscripcion i
             JOIN FETCH i.evento e
@@ -29,7 +47,7 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
     @Query("""
             SELECT COUNT(i) FROM Inscripcion i
             WHERE i.evento.idEvento = :idEvento
-              AND UPPER(TRIM(i.estado)) <> 'INACTIVO'
+              AND UPPER(TRIM(i.estado)) NOT IN ('INACTIVO', 'CANCELLED')
             """)
     long countCuposOcupadosPorEvento(@Param("idEvento") Long idEvento);
 
@@ -37,7 +55,7 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
             SELECT i.evento.idEvento, COUNT(i)
             FROM Inscripcion i
             WHERE i.evento.idEvento IN :ids
-              AND UPPER(TRIM(i.estado)) <> 'INACTIVO'
+              AND UPPER(TRIM(i.estado)) NOT IN ('INACTIVO', 'CANCELLED')
             GROUP BY i.evento.idEvento
             """)
     List<Object[]> countInscritosActivosAgrupadosPorEvento(@Param("ids") Collection<Long> ids);
@@ -46,13 +64,16 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
      * Asistencias confirmadas: la entidad no expone columna {@code asistio}; el esquema usa
      * {@code estado = 'ASISTIO'} como única fuente de verdad hasta que exista migración con boolean.
      */
-    @Query("SELECT COUNT(i) FROM Inscripcion i WHERE UPPER(TRIM(i.estado)) = 'ASISTIO'")
+    @Query("""
+            SELECT COUNT(i) FROM Inscripcion i
+            WHERE UPPER(TRIM(i.estado)) IN ('ASISTIO', 'PRESENTE', 'TARDIO')
+            """)
     long countAsistenciasPorEstado();
 
     @Query("""
             SELECT CAST(i.fechaInscripcion AS date), COUNT(i)
             FROM Inscripcion i
-            WHERE UPPER(TRIM(i.estado)) = 'ASISTIO'
+            WHERE UPPER(TRIM(i.estado)) IN ('ASISTIO', 'PRESENTE', 'TARDIO')
               AND i.fechaInscripcion >= :desde
               AND i.fechaInscripcion < :hasta
             GROUP BY CAST(i.fechaInscripcion AS date)

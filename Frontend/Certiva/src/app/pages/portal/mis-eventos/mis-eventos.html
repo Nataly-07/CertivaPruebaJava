@@ -91,6 +91,13 @@
                 <i class="fa-solid fa-qrcode"></i>
                 Ver pase QR
               </button>
+              <button
+                type="button"
+                class="btn-card btn-card--outline"
+                (click)="cancelarInscripcion(ins, $event)"
+              >
+                Cancelar inscripción
+              </button>
             } @else if (ins.fase === 'EN_CURSO') {
               @if (tieneEnlaceSesion(ins)) {
                 <a

@@ -111,6 +111,21 @@ export class MisEventos implements OnInit {
     this.qrModal.set(null);
   }
 
+  cancelarInscripcion(ins: InscripcionPortalDTO, ev?: Event): void {
+    ev?.stopPropagation();
+    if (!confirm(`¿Cancelar su inscripción a "${ins.nombreEvento}"? Se liberará el cupo.`)) {
+      return;
+    }
+    this.inscripcionService.cancelarInscripcion(ins.idInscripcion).subscribe({
+      next: () => {
+        this.lista.update(list => list.filter(i => i.idInscripcion !== ins.idInscripcion));
+      },
+      error: err => {
+        this.errorMsg.set(err?.error?.mensaje || 'No se pudo cancelar la inscripción.');
+      },
+    });
+  }
+
   tieneEnlaceSesion(ins: InscripcionPortalDTO): boolean {
     return !!ins.enlaceVirtual?.trim();
   }

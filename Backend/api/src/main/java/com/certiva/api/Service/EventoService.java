@@ -11,6 +11,7 @@ import com.certiva.api.DTO.EventoFilaAdminDTO;
 import com.certiva.api.DTO.EventoCatalogoPublicoDTO;
 import com.certiva.api.DTO.EventoPublicoDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
+import com.certiva.api.DTO.EventoRevisionPanelDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -52,4 +53,8 @@ public interface EventoService {
     List<EventoCatalogoPublicoDTO> listarCatalogoPublico();
 
     ProfesorPanelDTO obtenerPanelProfesor();
+
+    EventoRevisionPanelDTO obtenerRevisionCierre(Long idEvento);
+
+    void cancelarEvento(Long idEvento);
 }

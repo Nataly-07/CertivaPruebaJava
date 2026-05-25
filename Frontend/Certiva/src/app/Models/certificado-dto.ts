@@ -22,4 +22,6 @@ export interface CheckInRespuestaDTO {
   estadoInscripcion?: string;
   codigoCertificado?: string;
   idCertificado?: number;
+  /** Motivo si el certificado no se emite hasta el cierre del evento. */
+  certificadoPendienteMotivo?: string;
 }

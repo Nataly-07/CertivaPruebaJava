@@ -19,7 +19,9 @@ public interface InscripcionService {
 
     boolean borrarInscripcion(Long idInscripcion);
 
-    CheckInRespuestaDTO confirmarAsistenciaPorCodigoQr(String codigo);
+    CheckInRespuestaDTO confirmarAsistenciaPorCodigoQr(String codigo, String tipoAsistencia);
+
+    String cancelarMiInscripcion(Long idInscripcion);
 
     List<InscripcionPortalDTO> listarMisInscripciones();
 }

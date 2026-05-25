@@ -1,4 +1,4 @@
-<div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+<div class="dashboard-layout prof-panel" [class.sidebar-collapsed]="sidebarCollapsed">
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">
@@ -13,6 +13,9 @@
       <a routerLink="/admin/eventos" routerLinkActive="active" class="nav-item">
         @if (!sidebarCollapsed) { <span>Eventos</span> }
       </a>
+      <a routerLink="/admin/check-in" routerLinkActive="active" class="nav-item">
+        @if (!sidebarCollapsed) { <span>Check-in</span> }
+      </a>
     </nav>
     <div class="sidebar-footer">
       <button type="button" class="btn btn-dark-outline btn-sm w-100" (click)="logout()">Salir</button>
@@ -22,68 +25,263 @@
   <main class="main-content">
     <header class="page-header">
       <div>
-        <h1>Panel del profesor</h1>
-        <p class="text-secondary">Sus eventos creados y métricas de alumnos inscritos</p>
+        <h1>Centro operativo del profesor</h1>
+        <p class="text-secondary">Gestión académica, asistencia QR y cierre de actas</p>
       </div>
     </header>
 
     @if (loading()) {
-      <p class="text-secondary">Cargando métricas…</p>
+      <p class="text-secondary">Cargando panel…</p>
     } @else if (errorMsg()) {
       <div class="alert alert-warning">{{ errorMsg() }}</div>
     } @else if (panel(); as p) {
-      <div class="stats-row">
-        <div class="stat-card glass-card">
-          <span class="stat-label">Eventos creados</span>
-          <span class="stat-value">{{ p.totalEventos }}</span>
-        </div>
-        <div class="stat-card glass-card">
-          <span class="stat-label">Alumnos inscritos</span>
-          <span class="stat-value">{{ p.totalInscritos }}</span>
-        </div>
-        <div class="stat-card glass-card">
-          <span class="stat-label">Eventos activos</span>
-          <span class="stat-value">{{ p.eventosActivos }}</span>
-        </div>
+      @if (accionMsg()) {
+        <div class="alert alert-info py-2">{{ accionMsg() }}</div>
+      }
+
+      @if (p.banner?.sesionActivaHoy) {
+        <section class="prof-banner prof-banner--live glass-card">
+          <div class="prof-banner__icon">📢</div>
+          <div class="prof-banner__body">
+            <h2 class="prof-banner__title">Tienes una sesión activa hoy</h2>
+            <p class="prof-banner__meta">
+              <strong>Curso:</strong> {{ p.banner.nombreEvento }}
+              <span class="prof-banner__sep">|</span>
+              <strong>Horario:</strong> {{ horarioRango(p.banner.fechaInicio, p.banner.fechaFin) }}
+              <span class="prof-banner__sep">|</span>
+              <strong>Monitor:</strong>
+              {{ p.banner.monitorNombre }} {{ p.banner.monitorApellidos }}
+            </p>
+          </div>
+          <button type="button" class="btn btn-gradient" (click)="verAsistenciaEnVivo()">
+            Ver lista de asistencia en vivo
+          </button>
+        </section>
+      } @else {
+        <section class="prof-banner prof-banner--calm glass-card">
+          <div class="prof-banner__icon">📚</div>
+          <div class="prof-banner__body">
+            <h2 class="prof-banner__title">Panel académico</h2>
+            <p class="prof-banner__meta">
+              No hay sesiones en curso hoy. Revise sus cursos activos o las actas pendientes de cierre.
+            </p>
+          </div>
+        </section>
+      }
+
+      <div class="kpi-grid">
+        <article class="kpi-card glass-card">
+          <span class="kpi-card__icon" aria-hidden="true">📋</span>
+          <div>
+            <span class="kpi-card__value">{{ p.totalEventos }}</span>
+            <span class="kpi-card__label">Eventos creados</span>
+            <span class="kpi-card__hint">Total en su historial como instructor</span>
+          </div>
+        </article>
+        <article class="kpi-card glass-card">
+          <span class="kpi-card__icon" aria-hidden="true">👥</span>
+          <div>
+            <span class="kpi-card__value">{{ p.totalInscritos }}</span>
+            <span class="kpi-card__label">Alumnos inscritos</span>
+            <span class="kpi-card__hint">Impacto acumulado bajo su tutela</span>
+          </div>
+        </article>
+        <article class="kpi-card glass-card">
+          <span class="kpi-card__icon" aria-hidden="true">▶️</span>
+          <div>
+            <span class="kpi-card__value">{{ p.eventosActivos }}</span>
+            <span class="kpi-card__label">En calendario activo</span>
+            <span class="kpi-card__hint">Eventos dentro de su ventana de fechas</span>
+          </div>
+        </article>
+        <article
+          class="kpi-card glass-card"
+          [class.kpi-card--alert]="p.eventosPorCertificar > 0"
+        >
+          <span class="kpi-card__icon" aria-hidden="true">⚠️</span>
+          <div>
+            <span class="kpi-card__value">
+              {{ p.eventosPorCertificar }}
+              @if (p.eventosPorCertificar > 0) {
+                <span class="kpi-badge">Pendiente</span>
+              }
+            </span>
+            <span class="kpi-card__label">Eventos por certificar</span>
+            <span class="kpi-card__hint">En revisión o esperando acta de cierre</span>
+          </div>
+        </article>
       </div>
 
-      <section class="glass-card table-section mt-4">
-        <h2 class="h5 mb-3">Mis eventos</h2>
-        @if (p.eventos.length === 0) {
-          <p class="text-secondary">Aún no ha creado eventos. Vaya a <a routerLink="/admin/eventos">Eventos</a> para publicar uno.</p>
+      <section class="cursos-section glass-card">
+        <div class="cursos-section__head">
+          <h2 class="h5 mb-0">Mis cursos</h2>
+          <nav class="tab-filtros" aria-label="Pestañas de cursos">
+            <button
+              type="button"
+              class="tab-filtros__btn"
+              [class.active]="tabActiva() === 'EN_CURSO'"
+              (click)="cambiarTab('EN_CURSO')"
+            >
+              Clases activas
+              <span class="tab-count">{{ contarTab('EN_CURSO') }}</span>
+            </button>
+            <button
+              type="button"
+              class="tab-filtros__btn tab-filtros__btn--warn"
+              [class.active]="tabActiva() === 'PENDIENTES'"
+              (click)="cambiarTab('PENDIENTES')"
+            >
+              Pendientes de cierre
+              <span class="tab-count">{{ contarTab('PENDIENTES') }}</span>
+            </button>
+            <button
+              type="button"
+              class="tab-filtros__btn"
+              [class.active]="tabActiva() === 'HISTORIAL'"
+              (click)="cambiarTab('HISTORIAL')"
+            >
+              Historial / Cerrados
+              <span class="tab-count">{{ contarTab('HISTORIAL') }}</span>
+            </button>
+          </nav>
+        </div>
+
+        @if (eventosTab().length === 0) {
+          <p class="cursos-empty text-secondary">
+            No hay cursos en esta pestaña.
+            <a routerLink="/admin/eventos">Crear o gestionar eventos</a>
+          </p>
         } @else {
-          <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Evento</th>
-                  <th>Tipo</th>
-                  <th>Inscritos</th>
-                  <th>Inicio</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (ev of p.eventos; track ev.idEvento) {
-                  <tr>
-                    <td>{{ ev.nombreEvento }}</td>
-                    <td>{{ etiquetaTipo(ev.tipoEvento) }}</td>
-                    <td>{{ ev.inscritos }}</td>
-                    <td>{{ ev.fechaInicio | date: 'short' }}</td>
-                    <td>
-                      @if (ev.activo) {
-                        <span class="badge bg-success-subtle text-success">Activo</span>
-                      } @else {
-                        <span class="badge bg-secondary">Programado / finalizado</span>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+          <div class="curso-cards">
+            @for (ev of eventosTab(); track ev.idEvento) {
+              <article class="curso-card">
+                <header class="curso-card__head">
+                  <h3 class="curso-card__title">{{ ev.nombreEvento }}</h3>
+                  <span class="curso-card__tipo">{{ etiquetaTipo(ev.tipoEvento) }}</span>
+                </header>
+                <p class="curso-card__estado">{{ etiquetaEstado(ev.estadoOperativo) }}</p>
+                <ul class="curso-card__stats">
+                  <li><strong>{{ ev.inscritosActivos }}</strong> inscritos</li>
+                  <li>
+                    <strong>{{ ev.asistenciasConfirmadas }}</strong> check-ins
+                    ({{ ev.porcentajeAsistenciaGlobal }}%)
+                  </li>
+                  <li>Monitor: {{ nombreMonitor(ev) }}</li>
+                </ul>
+                <p class="curso-card__fechas">
+                  {{ ev.fechaInicio | date: 'mediumDate' }} —
+                  {{ ev.fechaFin | date: 'shortTime' }}
+                </p>
+                <div class="curso-card__actions">
+                  @if (tabActiva() === 'EN_CURSO') {
+                    <button type="button" class="btn btn-sm btn-outline-light" (click)="verAsistenciaEnVivo()">
+                      Ver asistencia QR
+                    </button>
+                  }
+                  @if (tabActiva() === 'PENDIENTES') {
+                    @if (ev.requiereIniciarRevision) {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-warning"
+                        [disabled]="accionandoId() === ev.idEvento"
+                        (click)="iniciarRevision(ev)"
+                      >
+                        Iniciar revisión
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-gradient"
+                      [disabled]="accionandoId() === ev.idEvento"
+                      (click)="abrirRevisionCierre(ev)"
+                    >
+                      Revisar y emitir certificados
+                    </button>
+                  }
+                  @if (tabActiva() === 'HISTORIAL') {
+                    <span class="curso-card__readonly">Solo consulta — acta cerrada</span>
+                  }
+                </div>
+              </article>
+            }
           </div>
         }
       </section>
     }
   </main>
 </div>
+
+@if (modalRevisionAbierto()) {
+  <div class="modal-overlay" (click)="cerrarModalRevision()" role="presentation">
+    <div
+      class="modal-revision glass-card"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-revision-title"
+    >
+      <header class="modal-revision__head">
+        <h2 id="modal-revision-title">Cierre de acta y certificados</h2>
+        <button type="button" class="modal-close" (click)="cerrarModalRevision()" aria-label="Cerrar">
+          ×
+        </button>
+      </header>
+
+      @if (revisionCargando()) {
+        <p class="text-secondary p-3">Cargando alumnos…</p>
+      } @else if (revision(); as rev) {
+        <p class="modal-revision__sub">
+          <strong>{{ rev.nombreEvento }}</strong> —
+          {{ rev.totalInscritos }} inscritos,
+          {{ rev.asistenciasRegistradas }} asistencias por QR registradas.
+        </p>
+        <div class="table-responsive modal-revision__table-wrap">
+          <table class="table table-dark table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>% Asistencia</th>
+                <th>Nota</th>
+                <th>Estado</th>
+                <th>Certificado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (al of rev.alumnos; track al.idInscripcion) {
+                <tr [class.table-success]="al.elegibleCertificado" [class.table-warning]="!al.elegibleCertificado">
+                  <td>
+                    {{ al.nombres }} {{ al.apellidos }}
+                    <div class="small text-muted">{{ al.correo }}</div>
+                  </td>
+                  <td>{{ al.porcentajeAsistencia }}%</td>
+                  <td>{{ al.nota ?? '—' }}</td>
+                  <td>{{ al.estadoInscripcion }}</td>
+                  <td class="small">
+                    @if (al.elegibleCertificado) {
+                      <span class="text-success">Elegible</span>
+                    } @else {
+                      <span class="text-warning">{{ al.motivoNoElegible ?? 'No elegible' }}</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="modal-revision__foot">
+          <button type="button" class="btn btn-outline-light" (click)="cerrarModalRevision()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn btn-gradient"
+            [disabled]="accionandoId() !== null"
+            (click)="confirmarCierreDesdeModal()"
+          >
+            Confirmar cierre y generar PDFs masivos
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}
