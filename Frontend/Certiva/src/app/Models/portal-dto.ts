@@ -83,13 +83,16 @@ export interface ProfesorEventoResumenDTO {
 
 export interface EventoRevisionAlumnoDTO {
   idInscripcion: number;
+  idResultadoEvaluacion?: number | null;
   nombres: string;
   apellidos: string;
   correo: string;
   estadoInscripcion: string;
   nota?: number | null;
+  observaciones?: string | null;
   porcentajeAsistencia: number;
   asistenciaConfirmada: boolean;
+  cumpleAsistenciaMinima?: boolean;
   elegibleCertificado: boolean;
   motivoNoElegible?: string | null;
 }
@@ -100,5 +103,36 @@ export interface EventoRevisionPanelDTO {
   estadoOperativo?: EstadoOperativoEvento;
   totalInscritos: number;
   asistenciasRegistradas: number;
+  elegiblesCertificado?: number;
+  notaMinimaAprobacion?: number | null;
+  porcentajeAsistenciaMinimo?: number | null;
   alumnos: EventoRevisionAlumnoDTO[];
+}
+
+export interface ProfesorAlumnoAsistenciaDTO {
+  idInscripcion: number;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  numeroDocumento?: string;
+  estadoInscripcion: string;
+  asistenciaConfirmada: boolean;
+  porcentajeAsistencia: number;
+  tokenQr?: string;
+}
+
+export interface EventoAsistenciaEnVivoDTO {
+  idEvento: number;
+  nombreEvento: string;
+  estadoOperativo?: EstadoOperativoEvento;
+  totalInscritos: number;
+  asistenciasConfirmadas: number;
+  porcentajeAsistenciaGlobal: number;
+  alumnos: ProfesorAlumnoAsistenciaDTO[];
+}
+
+export interface GuardarRevisionAlumnoDTO {
+  idInscripcion: number;
+  nota?: number | null;
+  observaciones?: string | null;
 }

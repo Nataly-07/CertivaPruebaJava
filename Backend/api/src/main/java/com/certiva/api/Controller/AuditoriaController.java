@@ -1,7 +1,9 @@
 package com.certiva.api.Controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +25,11 @@ public class AuditoriaController {
 
     @GetMapping("/recientes")
     public ResponseEntity<List<AuditoriaResumenDTO>> ultimas(
-            @RequestParam(name = "limite", defaultValue = "100") int limite) {
-        return ResponseEntity.ok(auditoriaService.listarUltimasAuditorias(limite));
+            @RequestParam(name = "limite", defaultValue = "100") int limite,
+            @RequestParam(required = false) String accion,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta,
+            @RequestParam(required = false) String busqueda) {
+        return ResponseEntity.ok(auditoriaService.listarConFiltros(accion, desde, hasta, busqueda, limite));
     }
 }

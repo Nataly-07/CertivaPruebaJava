@@ -4,6 +4,21 @@
   background: var(--gradient-bg);
 }
 
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .sidebar {
   width: 260px;
   background: var(--bg-sidebar);

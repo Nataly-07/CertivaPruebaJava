@@ -24,6 +24,12 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
     @Query("SELECT COUNT(e) FROM Evento e WHERE e.fechaInicio <= :ahora AND e.fechaFin >= :ahora AND e.estado = true")
     long countEventosActivosEn(@Param("ahora") LocalDateTime ahora);
 
+    @Query("""
+            SELECT COALESCE(SUM(e.aforoMaximo), 0) FROM Evento e
+            WHERE e.estado = true
+            """)
+    long sumAforoEventosActivos();
+
 /*     @Query("""
             SELECT DISTINCT e FROM Evento e LEFT JOIN FETCH e.usuarioCreador
             WHERE (:activo IS NULL OR e.estado = :activo)
@@ -83,6 +89,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
     java.util.Optional<Evento> findByCodigoDifusionAndEstadoTrue(String codigoDifusion);
 
     boolean existsByCodigoDifusion(String codigoDifusion);
+
+    long countByEstadoOperativo(com.certiva.api.enums.EstadoOperativoEvento estadoOperativo);
 
     List<Evento> findByUsuarioCreador_IdUsuarioOrderByFechaInicioDesc(Long idUsuario);
 

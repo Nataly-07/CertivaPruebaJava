@@ -3,6 +3,7 @@ package com.certiva.api.Impl;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.certiva.api.DTO.AuditoriaResumenDTO;
@@ -48,9 +49,24 @@ public class AuditoriaServiceImpl implements AuditoriaService {
 
     @Override
     public List<AuditoriaResumenDTO> listarUltimasAuditorias(int limite) {
+        return listarConFiltros(null, null, null, null, limite);
+    }
+
+    @Override
+    public List<AuditoriaResumenDTO> listarConFiltros(
+            String accion, LocalDateTime desde, LocalDateTime hasta, String busqueda, int limite) {
         int n = Math.max(1, Math.min(limite <= 0 ? 100 : limite, 500));
-        List<Auditoria> filas = _auditoriaRepository.findTop100ByOrderByFechaDesc().stream().limit(n).toList();
+        List<Auditoria> filas = _auditoriaRepository.buscarConFiltros(
+                blankToNull(accion),
+                desde,
+                hasta,
+                blankToNull(busqueda),
+                PageRequest.of(0, n));
         return filas.stream().map(this::mapearResumen).toList();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private AuditoriaResumenDTO mapearResumen(Auditoria a) {

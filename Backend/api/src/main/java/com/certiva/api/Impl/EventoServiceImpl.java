@@ -42,10 +42,15 @@ import com.certiva.api.DTO.EventoFilaAdminDTO;
 import com.certiva.api.DTO.EventoPublicoDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
 import com.certiva.api.DTO.EventoRevisionAlumnoDTO;
+import com.certiva.api.DTO.EventoAsistenciaEnVivoDTO;
 import com.certiva.api.DTO.EventoRevisionPanelDTO;
+import com.certiva.api.DTO.GuardarRevisionAlumnoDTO;
+import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
+import com.certiva.api.DTO.ProfesorAlumnoAsistenciaDTO;
 import com.certiva.api.DTO.ProfesorEventoTarjetaDTO;
 import com.certiva.api.DTO.ProfesorPanelBannerDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
+import com.certiva.api.DTO.ReasignarStaffDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO.ProfesorEventoResumenDTO;
 import com.certiva.api.Service.CertificadoElegibilidadService;
 import com.certiva.api.Util.ProfesorAsistenciaHelper;
@@ -67,6 +72,7 @@ import com.certiva.api.Repository.InscripcionRepository;
 import com.certiva.api.Repository.ResultadoEvaluacionRepository;
 import com.certiva.api.Repository.UsuarioRepository;
 import com.certiva.api.Entity.Inscripcion;
+import com.certiva.api.Entity.ResultadoEvaluacion;
 import com.certiva.api.Service.AuditoriaService;
 import com.certiva.api.Service.EventoService;
 import com.certiva.api.Util.EventoArchivoStorage;
@@ -131,6 +137,7 @@ public class EventoServiceImpl implements EventoService {
         this._auditoriaService = auditoriaService;
         this._archivoStorage = archivoStorage;
         this._eventoMapper = eventoMapper;
+    
         this._objectMapper = objectMapper;
         this._appProperties = appProperties;
         this._securityUsuarioHelper = securityUsuarioHelper;
@@ -201,7 +208,7 @@ public class EventoServiceImpl implements EventoService {
     @Transactional(propagation = Propagation.NOT_SUPPORTED, readOnly = true)
     public List<EventoResumenTipoDTO> listarResumenTipos(Boolean soloActivos, ModalidadEvento modalidad) {
         Boolean activo = resolverFiltroActivo(soloActivos);
-        List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, null, null, null);
+        List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, null, null, null, null);
         Map<Long, Long> inscritos = mapaInscritosPorFilas(filas);
         Map<TipoEventoEnum, List<EventoListadoRow>> porTipo = filas.stream()
                 .collect(Collectors.groupingBy(EventoListadoRow::tipoEvento));
@@ -232,9 +239,10 @@ public class EventoServiceImpl implements EventoService {
                                                     ModalidadEvento modalidad,
                                                     TipoEventoEnum tipo,
                                                     LocalDateTime desde,
-                                                    LocalDateTime hasta) {
+                                                    LocalDateTime hasta,
+                                                    EstadoOperativoEvento estadoOperativo) {
         Boolean activo = resolverFiltroActivo(soloActivos);
-        List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, tipo, desde, hasta);
+        List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, tipo, desde, hasta, estadoOperativo);
         Map<Long, Long> inscritos = mapaInscritosPorFilas(filas);
         return filas.stream()
                 .map(row -> toFilaAdmin(row, inscritos.getOrDefault(row.idEvento(), 0L)))
@@ -246,8 +254,9 @@ public class EventoServiceImpl implements EventoService {
             ModalidadEvento modalidad,
             TipoEventoEnum tipo,
             LocalDateTime desde,
-            LocalDateTime hasta) {
-        return _eventoListadoJdbc.listarConFiltros(activo, modalidad, tipo, desde, hasta);
+            LocalDateTime hasta,
+            EstadoOperativoEvento estadoOperativo) {
+        return _eventoListadoJdbc.listarConFiltros(activo, modalidad, tipo, desde, hasta, estadoOperativo);
     }
 
     private Map<Long, Long> mapaInscritosPorFilas(List<EventoListadoRow> filas) {
@@ -276,15 +285,30 @@ public class EventoServiceImpl implements EventoService {
         dto.setInscritosActivos(inscritosActivos);
         dto.setAforoMaximo(row.aforoMaximo());
         dto.setEstado(row.estado());
-        if (Boolean.FALSE.equals(row.estado())) {
-            dto.setEstadoOperativo(EstadoOperativoEvento.EVENT_CANCELLED);
-        } else {
-            dto.setEstadoOperativo(EstadoOperativoEventoHelper.calcularPorReloj(
-                    row.fechaInicio(), row.fechaFin(), LocalDateTime.now()));
-        }
+        dto.setEstadoOperativo(resolverEstadoOperativoFila(row));
         dto.setFechaInicio(row.fechaInicio());
         dto.setFechaFin(row.fechaFin());
         return dto;
+    }
+
+    private static EstadoOperativoEvento resolverEstadoOperativoFila(EventoListadoRow row) {
+        if (Boolean.FALSE.equals(row.estado())) {
+            return EstadoOperativoEvento.EVENT_CANCELLED;
+        }
+        EstadoOperativoEvento guardado = row.estadoOperativo();
+        LocalDateTime ahora = LocalDateTime.now();
+        if (guardado == null) {
+            return EstadoOperativoEventoHelper.calcularPorReloj(row.fechaInicio(), row.fechaFin(), ahora);
+        }
+        if (guardado == EstadoOperativoEvento.EVENT_CANCELLED
+                || guardado == EstadoOperativoEvento.CERRADO_Y_CERTIFICADO
+                || guardado == EstadoOperativoEvento.EN_REVISION) {
+            return guardado;
+        }
+        if (EstadoOperativoEventoHelper.admiteTransicionAutomatica(guardado)) {
+            return EstadoOperativoEventoHelper.calcularPorReloj(row.fechaInicio(), row.fechaFin(), ahora);
+        }
+        return guardado;
     }
 
     private void aplicarSoloPersonal(Evento evento, EventoDTO dto) {
@@ -412,6 +436,38 @@ public class EventoServiceImpl implements EventoService {
 
         EventoDTO salida = _eventoMapper.toDto(evento, true);
         salida.setCamposPersonalizados(camposADto(evento.getIdEvento()));
+        return salida;
+    }
+
+    @Override
+    @Transactional
+    public EventoDTO reasignarStaff(Long idEvento, ReasignarStaffDTO dto) {
+        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+            throw new OperacionNoPermitidaException("Solo un administrador puede reasignar personal en caliente.");
+        }
+        Evento evento = cargarEventoConStaff(idEvento);
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (EstadoOperativoEventoHelper.esTerminal(op)) {
+            throw new OperacionNoPermitidaException("No se puede reasignar personal en un evento cerrado o cancelado.");
+        }
+        Usuario admin = usuarioActualDesdeSeguridad();
+        if (dto.getIdsProfesoresColaboradores() != null) {
+            evento.setProfesoresColaboradores(
+                    cargarUsuariosPorRolExclusivo(dto.getIdsProfesoresColaboradores(), ROL_PROFESOR));
+        }
+        if (dto.getIdsMonitoresAsignados() != null) {
+            evento.setMonitoresAsignados(
+                    cargarUsuariosPorRolExclusivo(dto.getIdsMonitoresAsignados(), ROL_MONITOR));
+        }
+        evento = _eventoRepository.save(evento);
+        _auditoriaService.registrarAuditoria(
+                "EVENTO_STAFF_REASIGNADO",
+                "Admin reasignó profesores/monitores del evento id=" + idEvento
+                        + " (estado operativo: " + op + ")",
+                null,
+                admin);
+        EventoDTO salida = _eventoMapper.toDto(evento, true);
+        salida.setCamposPersonalizados(camposADto(idEvento));
         return salida;
     }
 
@@ -636,32 +692,22 @@ public class EventoServiceImpl implements EventoService {
         }
 
         List<Inscripcion> inscripciones = _inscripcionRepository.findActivasPorEventoConUsuario(idEvento);
+        Double notaMinima = null;
+        Integer pctMin = null;
+        if (evento instanceof CursoEvento curso) {
+            notaMinima = curso.getNotaMinimaAprobacion();
+            pctMin = curso.getPorcentajeAsistenciaMinimo();
+        }
+
         List<EventoRevisionAlumnoDTO> alumnos = new ArrayList<>();
+        long elegibles = 0;
 
         for (Inscripcion ins : inscripciones) {
-            Usuario u = ins.getUsuario();
-            Double nota = _resultadoEvaluacionRepository
-                    .findFirstByInscripcion_IdInscripcionOrderByIdDesc(ins.getIdInscripcion())
-                    .map(r -> r.getNota())
-                    .orElse(null);
-
-            int pct = ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(ins, evento, ahora);
-            boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
-            boolean elegible = _elegibilidadService.puedeEmitirCertificado(ins);
-            String motivo = elegible ? null : _elegibilidadService.motivoPendienteCertificado(ins);
-
-            alumnos.add(EventoRevisionAlumnoDTO.builder()
-                    .idInscripcion(ins.getIdInscripcion())
-                    .nombres(u.getNombres())
-                    .apellidos(u.getApellidos())
-                    .correo(u.getCorreo())
-                    .estadoInscripcion(ins.getEstado())
-                    .nota(nota)
-                    .porcentajeAsistencia(pct)
-                    .asistenciaConfirmada(asistio)
-                    .elegibleCertificado(elegible)
-                    .motivoNoElegible(motivo)
-                    .build());
+            EventoRevisionAlumnoDTO alumno = construirAlumnoRevision(ins, evento, ahora, notaMinima, pctMin);
+            alumnos.add(alumno);
+            if (alumno.isElegibleCertificado()) {
+                elegibles++;
+            }
         }
 
         long asistencias = _inscripcionRepository.countAsistenciasConfirmadasPorEvento(idEvento);
@@ -672,7 +718,159 @@ public class EventoServiceImpl implements EventoService {
                 .estadoOperativo(op)
                 .totalInscritos(inscripciones.size())
                 .asistenciasRegistradas(asistencias)
+                .elegiblesCertificado(elegibles)
+                .notaMinimaAprobacion(notaMinima)
+                .porcentajeAsistenciaMinimo(pctMin)
                 .alumnos(alumnos)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EventoAsistenciaEnVivoDTO obtenerAsistenciaEnVivo(Long idEvento) {
+        asegurarRolCrearEditar();
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = _eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
+        asegurarProfesorGestionaEvento(evento, profesor);
+
+        LocalDateTime ahora = LocalDateTime.now();
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
+        if (op != EstadoOperativoEvento.PROXIMO && op != EstadoOperativoEvento.EN_CURSO) {
+            throw new OperacionNoPermitidaException(
+                    "La asistencia en vivo solo está disponible para eventos próximos o en curso.");
+        }
+
+        List<Inscripcion> inscripciones = _inscripcionRepository.findActivasPorEventoConUsuario(idEvento);
+        List<ProfesorAlumnoAsistenciaDTO> alumnos = inscripciones.stream()
+                .map(ins -> construirAlumnoAsistencia(ins, evento, ahora))
+                .toList();
+        long asistencias = _inscripcionRepository.countAsistenciasConfirmadasPorEvento(idEvento);
+
+        return EventoAsistenciaEnVivoDTO.builder()
+                .idEvento(idEvento)
+                .nombreEvento(evento.getNombreEvento())
+                .estadoOperativo(op)
+                .totalInscritos(inscripciones.size())
+                .asistenciasConfirmadas(asistencias)
+                .porcentajeAsistenciaGlobal(
+                        ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscripciones.size()))
+                .alumnos(alumnos)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public EventoRevisionPanelDTO guardarEvaluacionesRevision(Long idEvento, GuardarRevisionEvaluacionesDTO dto) {
+        asegurarRolCrearEditar();
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = _eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
+        asegurarProfesorGestionaEvento(evento, profesor);
+
+        LocalDateTime ahora = LocalDateTime.now();
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
+        if (op != EstadoOperativoEvento.EN_REVISION
+                && op != EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
+            throw new OperacionNoPermitidaException(
+                    "Solo puede registrar evaluaciones en eventos en revisión o finalizados por tiempo.");
+        }
+
+        if (dto.getAlumnos() == null || dto.getAlumnos().isEmpty()) {
+            throw new OperacionNoPermitidaException("Debe indicar al menos una evaluación.");
+        }
+
+        Double notaMinima = evento instanceof CursoEvento curso ? curso.getNotaMinimaAprobacion() : null;
+
+        for (GuardarRevisionAlumnoDTO fila : dto.getAlumnos()) {
+            if (fila.getIdInscripcion() == null) {
+                continue;
+            }
+            Inscripcion ins = _inscripcionRepository.findById(fila.getIdInscripcion())
+                    .orElseThrow(() -> new RecursoNoEncontradoException(
+                            "Inscripción no encontrada: " + fila.getIdInscripcion()));
+            if (!ins.getEvento().getIdEvento().equals(idEvento)) {
+                throw new OperacionNoPermitidaException("La inscripción no pertenece al evento.");
+            }
+
+            ResultadoEvaluacion resultado = _resultadoEvaluacionRepository
+                    .findFirstByInscripcion_IdInscripcionOrderByIdDesc(ins.getIdInscripcion())
+                    .orElseGet(() -> {
+                        ResultadoEvaluacion nuevo = new ResultadoEvaluacion();
+                        nuevo.setInscripcion(ins);
+                        return nuevo;
+                    });
+
+            if (fila.getNota() != null) {
+                resultado.setNota(fila.getNota());
+                boolean aprobado = notaMinima == null || fila.getNota() >= notaMinima;
+                resultado.setAprobado(aprobado);
+            }
+            if (fila.getObservaciones() != null) {
+                resultado.setObservaciones(fila.getObservaciones().trim());
+            }
+            _resultadoEvaluacionRepository.save(resultado);
+        }
+
+        _auditoriaService.registrarAuditoria(
+                "REVISION_EVALUACIONES_GUARDADA",
+                "Profesor " + profesor.getIdUsuario() + " guardó evaluaciones del evento id=" + idEvento,
+                null,
+                profesor);
+
+        return obtenerRevisionCierre(idEvento);
+    }
+
+    private EventoRevisionAlumnoDTO construirAlumnoRevision(
+            Inscripcion ins,
+            Evento evento,
+            LocalDateTime ahora,
+            Double notaMinima,
+            Integer pctMin) {
+        Usuario u = ins.getUsuario();
+        var resultadoOpt = _resultadoEvaluacionRepository
+                .findFirstByInscripcion_IdInscripcionOrderByIdDesc(ins.getIdInscripcion());
+        Double nota = resultadoOpt.map(ResultadoEvaluacion::getNota).orElse(null);
+        String observaciones = resultadoOpt.map(ResultadoEvaluacion::getObservaciones).orElse(null);
+        Long idResultado = resultadoOpt.map(ResultadoEvaluacion::getId).orElse(null);
+
+        int pct = ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(ins, evento, ahora);
+        boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
+        boolean cumpleAsistencia = pctMin == null || pctMin <= 0 || pct >= pctMin || asistio;
+        boolean elegible = _elegibilidadService.puedeEmitirCertificado(ins);
+        String motivo = elegible ? null : _elegibilidadService.motivoPendienteCertificado(ins);
+
+        return EventoRevisionAlumnoDTO.builder()
+                .idInscripcion(ins.getIdInscripcion())
+                .idResultadoEvaluacion(idResultado)
+                .nombres(u.getNombres())
+                .apellidos(u.getApellidos())
+                .correo(u.getCorreo())
+                .estadoInscripcion(ins.getEstado())
+                .nota(nota)
+                .observaciones(observaciones)
+                .porcentajeAsistencia(pct)
+                .asistenciaConfirmada(asistio)
+                .cumpleAsistenciaMinima(cumpleAsistencia)
+                .elegibleCertificado(elegible)
+                .motivoNoElegible(motivo)
+                .build();
+    }
+
+    private ProfesorAlumnoAsistenciaDTO construirAlumnoAsistencia(
+            Inscripcion ins, Evento evento, LocalDateTime ahora) {
+        Usuario u = ins.getUsuario();
+        boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
+        return ProfesorAlumnoAsistenciaDTO.builder()
+                .idInscripcion(ins.getIdInscripcion())
+                .nombres(u.getNombres())
+                .apellidos(u.getApellidos())
+                .correo(u.getCorreo())
+                .numeroDocumento(u.getNumeroDocumento())
+                .estadoInscripcion(ins.getEstado())
+                .asistenciaConfirmada(asistio)
+                .porcentajeAsistencia(ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(ins, evento, ahora))
+                .tokenQr(ins.getTokenQr())
                 .build();
     }
 
@@ -736,11 +934,11 @@ public class EventoServiceImpl implements EventoService {
             List<ProfesorEventoTarjetaDTO> pendientesCierre,
             List<ProfesorEventoTarjetaDTO> historial) {
         switch (op) {
-            case EN_CURSO -> enCurso.add(tarjeta);
+            case PROXIMO, EN_CURSO -> enCurso.add(tarjeta);
             case EN_REVISION, FINALIZADO_POR_TIEMPO -> pendientesCierre.add(tarjeta);
             case CERRADO_Y_CERTIFICADO -> historial.add(tarjeta);
             default -> {
-                if (op != EstadoOperativoEvento.EVENT_CANCELLED && op != EstadoOperativoEvento.PROXIMO) {
+                if (op != EstadoOperativoEvento.EVENT_CANCELLED) {
                     pendientesCierre.add(tarjeta);
                 }
             }

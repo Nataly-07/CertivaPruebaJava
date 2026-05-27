@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { CertificadoService } from '../../../Services/certificado.service';
 import { CertificadoVerificacionDTO } from '../../../Models/certificado-dto';
 
@@ -12,13 +12,24 @@ import { CertificadoVerificacionDTO } from '../../../Models/certificado-dto';
   templateUrl: './verificar-certificado.html',
   styleUrl: './verificar-certificado.scss',
 })
-export class VerificarCertificado {
+export class VerificarCertificado implements OnInit {
   codigo = '';
   loading = false;
   errorMessage = '';
   resultado: CertificadoVerificacionDTO | null = null;
 
-  constructor(private certificadoService: CertificadoService) {}
+  constructor(
+    private certificadoService: CertificadoService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    const q = this.route.snapshot.queryParamMap.get('codigo');
+    if (q?.trim()) {
+      this.codigo = q.trim();
+      this.verificar();
+    }
+  }
 
   verificar(): void {
     const codigo = this.codigo.trim();

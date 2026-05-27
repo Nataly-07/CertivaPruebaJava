@@ -1,38 +1,94 @@
-<div class="audit-page">
-  <div class="audit-header">
-    <h1>Auditoría del sistema</h1>
-    <a routerLink="/admin/dashboard" class="btn btn-dark-outline btn-sm">← Dashboard</a>
-  </div>
+<div class="dashboard-layout audit-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-admin-sidebar [collapsed]="sidebarCollapsed" (collapsedChange)="sidebarCollapsed = $event" />
 
-  @if (loading) {
-    <p class="text-muted">Cargando…</p>
-  }
-  @if (errorMessage) {
-    <div class="alert alert-danger">{{ errorMessage }}</div>
-  }
+  <main class="main-content">
+    <div class="main-inner">
+      <div class="content-header mb-3">
+        <div>
+          <h1 class="page-title">Auditoría del sistema</h1>
+          <p class="page-subtitle">Registro inmutable de eventos técnicos — inspirado en trazabilidad ROOM_911</p>
+        </div>
+        <span class="audit-badge">APPEND-ONLY</span>
+      </div>
 
-  @if (!loading && registros.length > 0) {
-    <div class="table-responsive">
-      <table class="table table-dark table-sm align-middle">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Acción</th>
-            <th>Descripción</th>
-            <th>IP</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of registros; track r.idAuditoria) {
-            <tr>
-              <td>{{ r.fecha | date: 'short' }}</td>
-              <td>{{ r.accion }}</td>
-              <td>{{ r.descripcion }}</td>
-              <td>{{ r.ip }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="glass-card p-3 mb-3 audit-filters">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label-dark">Acción</label>
+            <select class="form-select form-select-dark" [(ngModel)]="filtroAccion">
+              <option value="">Todas</option>
+              @for (a of accionesDominio; track a) {
+                <option [value]="a">{{ a }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-dark">Desde</label>
+            <input type="date" class="form-control form-control-dark" [(ngModel)]="filtroDesde" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-dark">Hasta</label>
+            <input type="date" class="form-control form-control-dark" [(ngModel)]="filtroHasta" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-dark">Buscar</label>
+            <input type="search" class="form-control form-control-dark" [(ngModel)]="filtroBusqueda" placeholder="Descripción, entidad…" />
+          </div>
+          <div class="col-12 d-flex gap-2 mt-2">
+            <button type="button" class="btn btn-gradient btn-sm" (click)="cargar()">Aplicar filtros</button>
+            <button type="button" class="btn btn-dark-outline btn-sm" (click)="limpiarFiltros()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      @if (errorMessage) {
+        <div class="alert alert-danger">{{ errorMessage }}</div>
+      }
+
+      <div class="audit-terminal glass-card">
+        <div class="audit-terminal__header">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          <span class="audit-terminal__title">certiva-audit.log</span>
+          <span class="audit-terminal__count">{{ registros.length }} entradas</span>
+        </div>
+
+        @if (loading) {
+          <p class="audit-loading">Cargando registros…</p>
+        } @else if (registros.length === 0) {
+          <p class="audit-empty">Sin registros para los filtros seleccionados.</p>
+        } @else {
+          <div class="table-responsive audit-table-wrap">
+            <table class="table audit-table mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha / hora</th>
+                  <th>Acción</th>
+                  <th>Entidad</th>
+                  <th>Usuario</th>
+                  <th>Descripción</th>
+                  <th>IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of registros; track r.idAuditoria) {
+                  <tr>
+                    <td class="mono">{{ r.idAuditoria }}</td>
+                    <td class="mono">{{ r.fecha | date: 'yyyy-MM-dd HH:mm:ss' }}</td>
+                    <td><span class="log-pill" [ngClass]="claseAccion(r.accion)">{{ etiquetaAccion(r.accion) }}</span></td>
+                    <td class="mono small">{{ r.entidadAfectada || '—' }}</td>
+                    <td class="mono">{{ r.idUsuario ?? '—' }}</td>
+                    <td class="desc-cell">{{ r.descripcion || '—' }}</td>
+                    <td class="mono">{{ r.ip || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
     </div>
-  }
+  </main>
 </div>

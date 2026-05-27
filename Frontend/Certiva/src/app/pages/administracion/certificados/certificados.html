@@ -1,50 +1,165 @@
-<div class="cert-page">
-  <div class="cert-header">
-    <h1>Certificados emitidos</h1>
-    <a routerLink="/admin/eventos" class="btn btn-dark-outline btn-sm">← Panel</a>
-  </div>
+<div class="dashboard-layout cert-central" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-admin-sidebar [collapsed]="sidebarCollapsed" (collapsedChange)="sidebarCollapsed = $event" />
 
-  @if (loading) {
-    <p class="text-muted">Cargando…</p>
-  }
-  @if (errorMessage) {
-    <div class="alert alert-danger">{{ errorMessage }}</div>
-  }
+  <main class="main-content">
+    <div class="main-inner">
+      <div class="content-header cert-header mb-4">
+        <div>
+          <h1 class="page-title">Certificados emitidos</h1>
+          <p class="page-subtitle">Central de control — trazabilidad, verificación y revocación</p>
+        </div>
+        <a
+          routerLink="/verificar-certificado"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-dark-outline btn-sm cert-verify-btn"
+        >
+          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          Verificación pública
+        </a>
+      </div>
 
-  @if (!loading && certificados.length === 0) {
-    <p class="text-muted">No hay certificados registrados.</p>
-  }
+      @if (errorMessage) {
+        <div class="alert alert-danger glass-card mb-3" role="alert">{{ errorMessage }}</div>
+      }
 
-  @if (certificados.length > 0) {
-    <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Tipo</th>
-            <th>Código</th>
-            <th>Emisión</th>
-            <th>Usuario</th>
-            <th>Evento</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (c of certificados; track c.idCertificado) {
-            <tr>
-              <td>{{ c.idCertificado }}</td>
-              <td>{{ c.tipoCertificado }}</td>
-              <td><code>{{ c.codigoValidacion }}</code></td>
-              <td>{{ c.fechaEmision | date: 'short' }}</td>
-              <td>{{ c.idUsuario }}</td>
-              <td>{{ c.idEvento }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="row g-3 mb-4 cert-kpi-row">
+        <div class="col-12 col-md-4">
+          <app-dashboard-kpi-card
+            label="Total certificados emitidos"
+            [value]="kpis?.totalEmitidos"
+            icon="award"
+            valueTone="orange"
+            [trendLine]="kpis ? 'Tasa aprobación: ' + kpis.tasaAprobacion + '%' : null"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <app-dashboard-kpi-card
+            label="Eventos clausurados"
+            [value]="kpis?.eventosClausurados"
+            icon="calendar"
+            valueTone="teal"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card glass-card border-0 h-100 mb-0 cert-kpi-ultimo">
+            <div class="card-body p-4">
+              <div class="kpi-label text-secondary small mb-2">Último lote generado</div>
+              <div class="cert-ultimo-text">{{ ultimoLoteLinea }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card p-3 mb-3 cert-toolbar">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label-dark">Buscar</label>
+            <input
+              type="search"
+              class="form-control form-control-dark"
+              [(ngModel)]="filtroBusqueda"
+              placeholder="Alumno, cédula o código CERT-…"
+              (keyup.enter)="cargar()"
+            />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label-dark">Evento</label>
+            <select class="form-select form-select-dark" [(ngModel)]="filtroEventoId">
+              <option [ngValue]="null">Todos los eventos</option>
+              @for (ev of eventosFiltro; track ev.idEvento) {
+                <option [ngValue]="ev.idEvento">{{ ev.nombreEvento }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-md-3 d-flex gap-2">
+            <button type="button" class="btn btn-gradient btn-sm flex-grow-1" (click)="cargar()" [disabled]="loading">
+              Aplicar
+            </button>
+            <button type="button" class="btn btn-dark-outline btn-sm" (click)="limpiarFiltros()" [disabled]="loading">
+              Limpiar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      @if (loading) {
+        <p class="text-secondary">Cargando certificados…</p>
+      }
+
+      @if (!loading && certificados.length === 0) {
+        <div class="glass-card p-4 text-center text-secondary">
+          No hay certificados que coincidan con los filtros.
+        </div>
+      }
+
+      @if (!loading && certificados.length > 0) {
+        <div class="table-responsive glass-card cert-table-wrap">
+          <table class="table table-dark table-hover align-middle mb-0 cert-table">
+            <thead>
+              <tr>
+                <th>Código verificador</th>
+                <th>Participante</th>
+                <th>Evento / Curso</th>
+                <th>Fecha emisión</th>
+                <th>Estado</th>
+                <th class="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of certificados; track c.idCertificado) {
+                <tr [class.cert-row-revocado]="c.estado === 'REVOCADO'">
+                  <td><code class="cert-code">{{ c.codigoMostrar || c.codigoValidacion }}</code></td>
+                  <td>
+                    <div class="cert-participante">{{ c.nombreParticipante }}</div>
+                    @if (c.numeroDocumento) {
+                      <div class="small text-secondary">{{ c.numeroDocumento }}</div>
+                    }
+                  </td>
+                  <td>{{ c.nombreEvento }}</td>
+                  <td>{{ c.fechaEmision | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    @if (c.estado === 'VALIDO') {
+                      <span class="cert-badge cert-badge--valido">Válido</span>
+                    } @else {
+                      <span class="cert-badge cert-badge--revocado">Revocado</span>
+                    }
+                  </td>
+                  <td class="text-end">
+                    <div class="cert-actions">
+                      <button
+                        type="button"
+                        class="btn btn-icon"
+                        title="Ver verificación"
+                        (click)="verCertificado(c)"
+                      >
+                        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-icon"
+                        title="Descargar PDF"
+                        (click)="descargarPdf(c)"
+                      >
+                        <i class="fa-solid fa-download" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-icon btn-icon--danger"
+                        title="Revocar"
+                        [disabled]="c.estado === 'REVOCADO' || revocandoId === c.idCertificado"
+                        (click)="revocar(c)"
+                      >
+                        <i class="fa-solid fa-ban" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
-  }
-
-  <p class="mt-3">
-    <a routerLink="/verificar-certificado" class="link-cyan">Verificación pública de certificados →</a>
-  </p>
+  </main>
 </div>

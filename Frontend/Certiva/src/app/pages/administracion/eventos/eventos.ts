@@ -41,9 +41,10 @@ import {
   etiquetaTipoCampo,
   etiquetaTipoEvento,
 } from '../../../constants/ui-labels';
-import { etiquetaEstadoEvento } from '../../../constants/estado-evento';
+import { etiquetaEstadoEvento, EstadoOperativoEvento, ETIQUETAS_ESTADO_EVENTO } from '../../../constants/estado-evento';
 import { TARJETAS_TIPO_EVENTO, TarjetaTipoEventoConfig } from '../../../constants/evento-tipo-cards';
 import { URL_MAX_LENGTH, urlFlexibleValidator } from '../../../validators/url.validators';
+import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-sidebar.component';
 
 @Component({
   selector: 'app-eventos',
@@ -58,6 +59,7 @@ import { URL_MAX_LENGTH, urlFlexibleValidator } from '../../../validators/url.va
     StackTagsPickerComponent,
     QrCodeDisplayComponent,
     RolEtiquetaPipe,
+    AdminSidebarComponent,
   ],
   templateUrl: './eventos.html',
   styleUrl: './eventos.scss',
@@ -114,6 +116,21 @@ export class Eventos implements OnInit {
   createForm!: FormGroup;
   editForm!: FormGroup;
 
+  readonly estadosOperativos: EstadoOperativoEvento[] = [
+    'PROXIMO',
+    'EN_CURSO',
+    'FINALIZADO_POR_TIEMPO',
+    'EN_REVISION',
+    'CERRADO_Y_CERTIFICADO',
+    'EVENT_CANCELLED',
+  ];
+  readonly etiquetasEstadoOp = ETIQUETAS_ESTADO_EVENTO;
+
+  showReassignModal = false;
+  reassignTarget: EventoFilaAdminDTO | null = null;
+  profesoresReassign: UsuarioStaffDTO[] = [];
+  monitoresReassign: UsuarioStaffDTO[] = [];
+  guardandoReassign = false;
   showCreateModal = false;
   showEditModal = false;
   editing: EventoDTO | null = null;
@@ -136,6 +153,9 @@ export class Eventos implements OnInit {
       soloActivos: [true],
       modalidad: [null as ModalidadEvento | null],
       tipo: [null as TipoEventoEnum | null],
+      estadoOperativo: [null as EstadoOperativoEvento | null],
+      desde: [''],
+      hasta: [''],
     });
     this.createForm = this.buildEventoForm(true);
     this.editForm = this.buildEventoForm(false);
@@ -260,6 +280,10 @@ export class Eventos implements OnInit {
     const filtros: ListarEventosFiltros = {
       soloActivos: v.soloActivos,
       modalidad: v.modalidad || undefined,
+      tipo: v.tipo || undefined,
+      estadoOperativo: v.estadoOperativo || undefined,
+      desde: v.desde ? `${v.desde}T00:00:00` : undefined,
+      hasta: v.hasta ? `${v.hasta}T23:59:59` : undefined,
     };
     forkJoin({
       resumenes: this.eventoService.resumenTipos(filtros),
@@ -625,7 +649,10 @@ export class Eventos implements OnInit {
   }
 
   forzarCierre(ev: EventoFilaAdminDTO): void {
-    if (!confirm(`¿Forzar cierre y certificación de "${ev.nombreEvento}"?`)) {
+    if (!this.puedeForzarCierre(ev)) {
+      return;
+    }
+    if (!confirm(`¿Forzar cierre y certificación de emergencia para "${ev.nombreEvento}"?`)) {
       return;
     }
     this.eventoService.forzarCierre(ev.idEvento).subscribe({
@@ -635,6 +662,55 @@ export class Eventos implements OnInit {
       },
       error: err => (this.errorMsg = err?.error?.mensaje || 'No se pudo forzar el cierre.'),
     });
+  }
+
+  puedeForzarCierre(ev: EventoFilaAdminDTO): boolean {
+    return (
+      this.authService.isAdmin() &&
+      (ev.estadoOperativo === 'EN_REVISION' || ev.estadoOperativo === 'FINALIZADO_POR_TIEMPO')
+    );
+  }
+
+  openReassignStaff(ev: EventoFilaAdminDTO): void {
+    this.reassignTarget = ev;
+    this.profesoresReassign = [];
+    this.monitoresReassign = [];
+    this.showReassignModal = true;
+    this.eventoService.obtener(ev.idEvento).subscribe({
+      next: (dto) => {
+        this.profesoresReassign = [...(dto.profesoresColaboradores ?? [])];
+        this.monitoresReassign = [...(dto.monitoresAsignados ?? [])];
+      },
+      error: () => {
+        this.errorMsg = 'No se pudo cargar el personal del evento.';
+      },
+    });
+  }
+
+  closeReassignModal(): void {
+    this.showReassignModal = false;
+    this.reassignTarget = null;
+  }
+
+  saveReassignStaff(): void {
+    if (!this.reassignTarget) return;
+    this.guardandoReassign = true;
+    this.eventoService
+      .reasignarStaff(this.reassignTarget.idEvento, {
+        idsProfesoresColaboradores: this.profesoresReassign.map(p => p.idUsuario),
+        idsMonitoresAsignados: this.monitoresReassign.map(m => m.idUsuario),
+      })
+      .subscribe({
+        next: () => {
+          this.guardandoReassign = false;
+          this.closeReassignModal();
+          this.loadDashboardData();
+        },
+        error: err => {
+          this.guardandoReassign = false;
+          this.errorMsg = err?.error?.mensaje || 'No se pudo reasignar el personal.';
+        },
+      });
   }
 
   esModalidadVirtual(ctrl: AbstractControl | null): boolean {

@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import com.certiva.api.enums.EstadoOperativoEvento;
 import com.certiva.api.enums.ModalidadEvento;
 import com.certiva.api.enums.TipoEventoEnum;
 
@@ -49,6 +50,7 @@ public class EventoListadoJdbcRepository {
             ModalidadEvento modalidad,
             Integer aforoMaximo,
             Boolean estado,
+            EstadoOperativoEvento estadoOperativo,
             LocalDateTime fechaInicio,
             LocalDateTime fechaFin,
             String creadorNombres,
@@ -137,7 +139,7 @@ public class EventoListadoJdbcRepository {
 
     private List<CatalogoPublicoRow> listarCatalogoPublicoLegacy(LocalDateTime ahora) {
         try {
-            List<EventoListadoRow> filas = listarConFiltros(null, null, null, null, null);
+            List<EventoListadoRow> filas = listarConFiltros(null, null, null, null, null, null);
             List<EventoListadoRow> vigentes = filas.stream()
                     .filter(EventoListadoJdbcRepository::esEventoActivo)
                     .filter(e -> e.fechaFin() != null && e.fechaFin().isAfter(ahora))
@@ -381,7 +383,8 @@ public class EventoListadoJdbcRepository {
             ModalidadEvento modalidad,
             TipoEventoEnum tipo,
             LocalDateTime desde,
-            LocalDateTime hasta) {
+            LocalDateTime hasta,
+            EstadoOperativoEvento estadoOperativo) {
 
         StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         List<Object> params = new ArrayList<>();
@@ -407,6 +410,10 @@ public class EventoListadoJdbcRepository {
             where.append(" AND e.fecha_inicio <= ?");
             params.add(Timestamp.valueOf(hasta));
         }
+        if (estadoOperativo != null) {
+            where.append(" AND UPPER(TRIM(CAST(e.estado_operativo AS varchar))) = ?");
+            params.add(estadoOperativo.name());
+        }
 
         Exception ultima = null;
         for (String[] tablas : TABLA_EVENTO_USUARIO) {
@@ -419,6 +426,7 @@ public class EventoListadoJdbcRepository {
                            CAST(e.modalidad AS varchar) AS modalidad,
                            e.cupos,
                            e.estado,
+                           CAST(e.estado_operativo AS varchar) AS estado_operativo,
                            e.fecha_inicio,
                            e.fecha_fin,
                            u.nombres AS creador_nombres,
@@ -448,6 +456,7 @@ public class EventoListadoJdbcRepository {
                            CAST(e.modalidad AS varchar) AS modalidad,
                            e.cupos,
                            e.estado,
+                           CAST(e.estado_operativo AS varchar) AS estado_operativo,
                            e.fecha_inicio,
                            e.fecha_fin,
                            NULL::varchar AS creador_nombres,
@@ -470,6 +479,7 @@ public class EventoListadoJdbcRepository {
                            'PRESENCIAL' AS modalidad,
                            e.cupos,
                            e.estado,
+                           'PROXIMO' AS estado_operativo,
                            e.fecha_inicio,
                            e.fecha_fin,
                            NULL::varchar AS creador_nombres,
@@ -532,11 +542,23 @@ public class EventoListadoJdbcRepository {
                     mod,
                     (Integer) rs.getObject("cupos"),
                     leerEstado(rs),
+                    parseEstadoOperativo(rs.getString("estado_operativo")),
                     toLocalDateTime(rs.getTimestamp("fecha_inicio")),
                     toLocalDateTime(rs.getTimestamp("fecha_fin")),
                     rs.getString("creador_nombres"),
                     rs.getString("creador_apellidos"));
         };
+    }
+
+    private static EstadoOperativoEvento parseEstadoOperativo(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return EstadoOperativoEvento.PROXIMO;
+        }
+        try {
+            return EstadoOperativoEvento.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return EstadoOperativoEvento.PROXIMO;
+        }
     }
 
     private static LocalDateTime toLocalDateTime(Timestamp ts) {

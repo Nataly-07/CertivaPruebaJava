@@ -13,8 +13,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.certiva.api.DTO.CertificadoAdminFilaDTO;
+import com.certiva.api.DTO.CertificadosAdminVistaDTO;
 import com.certiva.api.DTO.CertificadoVerificacionDTO;
 import com.certiva.api.DTO.CrearCertificadoDTO;
 import com.certiva.api.DTO.CertificadoDTO;
@@ -61,6 +64,27 @@ public class CertificadoController {
     @PostMapping("/mis/inscripcion/{idInscripcion}/emitir")
     public ResponseEntity<CertificadoDTO> emitirMiCertificado(@PathVariable Long idInscripcion) {
         return ResponseEntity.ok(_certificadoService.emitirCertificadoMiInscripcion(idInscripcion));
+    }
+
+    @GetMapping("/admin/vista")
+    public ResponseEntity<CertificadosAdminVistaDTO> vistaAdmin(
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(required = false) Long idEvento) {
+        return ResponseEntity.ok(_certificadoService.obtenerVistaAdmin(busqueda, idEvento));
+    }
+
+    @GetMapping("/admin/{id}/pdf")
+    public ResponseEntity<byte[]> descargarPdfAdmin(@PathVariable Long id) {
+        byte[] pdf = _certificadoService.descargarPdfAdmin(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"certificado-" + id + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+    @PostMapping("/admin/{id}/revocar")
+    public ResponseEntity<CertificadoAdminFilaDTO> revocarCertificado(@PathVariable Long id) {
+        return ResponseEntity.ok(_certificadoService.revocarCertificado(id));
     }
 
     @GetMapping

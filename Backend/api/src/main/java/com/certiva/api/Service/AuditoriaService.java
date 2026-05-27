@@ -1,5 +1,6 @@
 package com.certiva.api.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.certiva.api.DTO.AuditoriaResumenDTO;
@@ -15,4 +16,6 @@ public interface AuditoriaService {
     void registrarAuditoriaHttp(String accion, String entidadAfectada, String descripcion, String ip, Usuario usuario);
 
     List<AuditoriaResumenDTO> listarUltimasAuditorias(int limite);
+
+    List<AuditoriaResumenDTO> listarConFiltros(String accion, LocalDateTime desde, LocalDateTime hasta, String busqueda, int limite);
 }

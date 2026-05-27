@@ -281,6 +281,89 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
 }
 
+.modal-revision--wide {
+  max-width: 960px;
+  width: 96vw;
+}
+
+.modal-revision__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.modal-steps {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.modal-steps__btn {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  cursor: pointer;
+
+  &.active {
+    border-color: rgba(99, 102, 241, 0.6);
+    color: #e2e8f0;
+    background: rgba(99, 102, 241, 0.15);
+  }
+}
+
+.input-nota {
+  max-width: 72px;
+}
+
+.cert-launcher {
+  text-align: center;
+}
+
+.cert-launcher__icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cert-launcher__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.cert-launcher__text {
+  max-width: 520px;
+  margin: 0 auto 1rem;
+  color: var(--text-secondary);
+}
+
+.cert-launcher__checks {
+  text-align: left;
+  max-width: 420px;
+  margin: 0 auto 1rem;
+}
+
+.btn-cert-launch {
+  font-weight: 700;
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.35);
+}
+
+.cert-launcher__foot {
+  flex-wrap: wrap;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
 .modal-revision__head h2 {
   margin: 0;
   font-size: 1.2rem;

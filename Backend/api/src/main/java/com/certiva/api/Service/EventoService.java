@@ -12,6 +12,8 @@ import com.certiva.api.DTO.EventoCatalogoPublicoDTO;
 import com.certiva.api.DTO.EventoPublicoDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
 import com.certiva.api.DTO.EventoRevisionPanelDTO;
+import com.certiva.api.DTO.EventoAsistenciaEnVivoDTO;
+import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,7 +36,10 @@ public interface EventoService {
                                               ModalidadEvento modalidad,
                                               TipoEventoEnum tipo,
                                               LocalDateTime desde,
-                                              LocalDateTime hasta);
+                                              LocalDateTime hasta,
+                                              com.certiva.api.enums.EstadoOperativoEvento estadoOperativo);
+
+    EventoDTO reasignarStaff(Long idEvento, com.certiva.api.DTO.ReasignarStaffDTO dto);
 
     EventoDTO obtenerPorId(Long idEvento);
 
@@ -55,6 +60,10 @@ public interface EventoService {
     ProfesorPanelDTO obtenerPanelProfesor();
 
     EventoRevisionPanelDTO obtenerRevisionCierre(Long idEvento);
+
+    EventoAsistenciaEnVivoDTO obtenerAsistenciaEnVivo(Long idEvento);
+
+    EventoRevisionPanelDTO guardarEvaluacionesRevision(Long idEvento, GuardarRevisionEvaluacionesDTO dto);
 
     void cancelarEvento(Long idEvento);
 }

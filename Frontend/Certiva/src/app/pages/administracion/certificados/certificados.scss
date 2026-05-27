@@ -1,17 +1,129 @@
-.cert-page {
+.cert-central {
   min-height: 100vh;
-  padding: 2rem;
+  display: flex;
   background: var(--gradient-bg);
-  color: var(--text-primary);
+}
+
+.cert-central .main-content {
+  flex: 1;
+  margin-left: 260px;
+  padding: 2rem;
+  transition: margin-left 0.3s ease;
+}
+
+.cert-central.sidebar-collapsed .main-content {
+  margin-left: 72px;
 }
 
 .cert-header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.link-cyan {
+.cert-verify-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.cert-kpi-ultimo .cert-ultimo-text {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.cert-table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.cert-table thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom-color: var(--border-subtle);
+  padding: 0.85rem 1rem;
+}
+
+.cert-table tbody td {
+  padding: 0.85rem 1rem;
+  vertical-align: middle;
+}
+
+.cert-code {
   color: var(--accent-cyan);
+  font-size: 0.85rem;
+}
+
+.cert-participante {
+  font-weight: 600;
+}
+
+.cert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.cert-badge--valido {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.cert-badge--revocado {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.cert-row-revocado {
+  opacity: 0.72;
+}
+
+.cert-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.btn-icon {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.btn-icon:hover:not(:disabled) {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.btn-icon--danger:hover:not(:disabled) {
+  border-color: #f87171;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

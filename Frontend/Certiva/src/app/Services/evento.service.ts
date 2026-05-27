@@ -16,6 +16,7 @@ import {
   TipoEventoEnum,
 } from '../Models/evento-dto';
 import { EventoRevisionPanelDTO, ProfesorPanelDTO } from '../Models/portal-dto';
+import type { EventoAsistenciaEnVivoDTO, GuardarRevisionAlumnoDTO } from '../Models/portal-dto';
 import { EventoPublico } from '../Models/evento-publico';
 
 export interface ListarEventosFiltros {
@@ -24,6 +25,7 @@ export interface ListarEventosFiltros {
   tipo?: TipoEventoEnum;
   desde?: string;
   hasta?: string;
+  estadoOperativo?: string;
 }
 
 @Injectable({
@@ -61,6 +63,9 @@ export class EventoService {
     }
     if (filtros?.hasta) {
       params = params.set('hasta', filtros.hasta);
+    }
+    if (filtros?.estadoOperativo) {
+      params = params.set('estadoOperativo', filtros.estadoOperativo);
     }
     return this.http.get<EventoFilaAdminDTO[]>(`${this.baseUrl}/vista-admin`, { params });
   }
@@ -145,6 +150,19 @@ export class EventoService {
     return this.http.get<EventoRevisionPanelDTO>(`${this.baseUrl}/mi-panel/revision/${idEvento}`);
   }
 
+  obtenerAsistenciaEnVivo(idEvento: number): Observable<EventoAsistenciaEnVivoDTO> {
+    return this.http.get<EventoAsistenciaEnVivoDTO>(`${this.baseUrl}/mi-panel/${idEvento}/asistencia-en-vivo`);
+  }
+
+  guardarEvaluacionesRevision(
+    idEvento: number,
+    alumnos: GuardarRevisionAlumnoDTO[]
+  ): Observable<EventoRevisionPanelDTO> {
+    return this.http.put<EventoRevisionPanelDTO>(`${this.baseUrl}/mi-panel/revision/${idEvento}/evaluaciones`, {
+      alumnos,
+    });
+  }
+
   cancelarEvento(id: number): Observable<string> {
     return this.http.post(`${this.baseUrl}/${id}/cancelar`, {}, { responseType: 'text' });
   }
@@ -159,5 +177,12 @@ export class EventoService {
 
   forzarCierre(id: number): Observable<EventoCierreResultadoDTO> {
     return this.http.post<EventoCierreResultadoDTO>(`${this.baseUrl}/${id}/forzar-cierre`, {});
+  }
+
+  reasignarStaff(
+    id: number,
+    payload: { idsProfesoresColaboradores: number[]; idsMonitoresAsignados: number[] }
+  ): Observable<EventoDTO> {
+    return this.http.patch<EventoDTO>(`${this.baseUrl}/${id}/reasignar-staff`, payload);
   }
 }

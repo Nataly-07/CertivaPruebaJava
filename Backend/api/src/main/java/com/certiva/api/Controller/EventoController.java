@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -27,9 +28,13 @@ import com.certiva.api.DTO.EventoFilaAdminDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
 import com.certiva.api.DTO.EventoCierreResultadoDTO;
 import com.certiva.api.DTO.EventoRevisionPanelDTO;
+import com.certiva.api.DTO.EventoAsistenciaEnVivoDTO;
+import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
+import com.certiva.api.DTO.ReasignarStaffDTO;
 import com.certiva.api.Service.EventoCicloVidaService;
 import com.certiva.api.Service.EventoService;
+import com.certiva.api.enums.EstadoOperativoEvento;
 import com.certiva.api.enums.ModalidadEvento;
 import com.certiva.api.enums.TipoEventoEnum;
 
@@ -66,6 +71,18 @@ public class EventoController {
         return ResponseEntity.ok(_eventoService.obtenerRevisionCierre(id));
     }
 
+    @GetMapping("/mi-panel/{id}/asistencia-en-vivo")
+    public ResponseEntity<EventoAsistenciaEnVivoDTO> asistenciaEnVivo(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoService.obtenerAsistenciaEnVivo(id));
+    }
+
+    @PutMapping("/mi-panel/revision/{id}/evaluaciones")
+    public ResponseEntity<EventoRevisionPanelDTO> guardarEvaluacionesRevision(
+            @PathVariable Long id,
+            @RequestBody GuardarRevisionEvaluacionesDTO body) {
+        return ResponseEntity.ok(_eventoService.guardarEvaluacionesRevision(id, body));
+    }
+
     @GetMapping("/resumen-tipos")
     public ResponseEntity<List<EventoResumenTipoDTO>> resumenTipos(
             @RequestParam(required = false) Boolean soloActivos,
@@ -79,8 +96,9 @@ public class EventoController {
             @RequestParam(required = false) ModalidadEvento modalidad,
             @RequestParam(required = false) TipoEventoEnum tipo,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
-        return ResponseEntity.ok(_eventoService.listarVistaAdmin(soloActivos, modalidad, tipo, desde, hasta));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta,
+            @RequestParam(required = false) EstadoOperativoEvento estadoOperativo) {
+        return ResponseEntity.ok(_eventoService.listarVistaAdmin(soloActivos, modalidad, tipo, desde, hasta, estadoOperativo));
     }
 
     @GetMapping
@@ -112,6 +130,11 @@ public class EventoController {
     public ResponseEntity<EventoDTO> actualizarEvento(@PathVariable Long id, @Valid @RequestBody EventoDTO eventoDTO) {
         eventoDTO.setIdEvento(id);
         return ResponseEntity.ok(_eventoService.actualizarEvento(eventoDTO));
+    }
+
+    @PatchMapping("/{id}/reasignar-staff")
+    public ResponseEntity<EventoDTO> reasignarStaff(@PathVariable Long id, @RequestBody ReasignarStaffDTO dto) {
+        return ResponseEntity.ok(_eventoService.reasignarStaff(id, dto));
     }
 
     @PutMapping("/{id}/inactivar")

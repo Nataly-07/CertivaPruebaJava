@@ -14,17 +14,15 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EventoRevisionPanelDTO {
+public class EventoAsistenciaEnVivoDTO {
 
     private Long idEvento;
     private String nombreEvento;
     private EstadoOperativoEvento estadoOperativo;
     private long totalInscritos;
-    private long asistenciasRegistradas;
-    private long elegiblesCertificado;
-    private Double notaMinimaAprobacion;
-    private Integer porcentajeAsistenciaMinimo;
+    private long asistenciasConfirmadas;
+    private int porcentajeAsistenciaGlobal;
 
     @Builder.Default
-    private List<EventoRevisionAlumnoDTO> alumnos = new ArrayList<>();
+    private List<ProfesorAlumnoAsistenciaDTO> alumnos = new ArrayList<>();
 }

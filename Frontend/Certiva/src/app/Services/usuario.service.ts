@@ -6,6 +6,8 @@ import { UsuarioDTO } from '../Models/usuario-dto';
 import { CrearUsuarioDTO } from '../Models/crear-usuario-dto';
 import { UsuarioStaffDTO } from '../Models/evento-dto';
 
+import { ImportacionCsvResultadoDTO } from '../Models/importacion-csv-dto';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -49,5 +51,11 @@ export class UsuarioService {
       params = params.set('q', q.trim());
     }
     return this.http.get<UsuarioStaffDTO[]>(`${this.apiUrl}/rol/${codigoRol}`, { params });
+  }
+
+  importarCsv(archivo: File): Observable<ImportacionCsvResultadoDTO> {
+    const form = new FormData();
+    form.append('archivo', archivo);
+    return this.http.post<ImportacionCsvResultadoDTO>(`${this.apiUrl}/importar-csv`, form);
   }
 }

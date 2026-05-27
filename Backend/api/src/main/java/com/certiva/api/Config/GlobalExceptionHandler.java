@@ -16,6 +16,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.certiva.api.DTO.ErrorRespuestaDTO;
 import com.certiva.api.Exception.ConflictoOperacionException;
@@ -145,6 +146,15 @@ public class GlobalExceptionHandler {
         String mensaje = ex.getMessage() != null ? ex.getMessage() : "Error al consultar eventos en la base de datos.";
         ErrorRespuestaDTO error = new ErrorRespuestaDTO(true, 500, mensaje);
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorRespuestaDTO> handleNoResource(NoResourceFoundException ex) {
+        ErrorRespuestaDTO error = new ErrorRespuestaDTO(
+                true,
+                404,
+                "Recurso no encontrado. La API REST está en /api/ — use el frontend Angular (puerto 4200) o Swagger en /swagger-ui/index.html.");
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(Exception.class)

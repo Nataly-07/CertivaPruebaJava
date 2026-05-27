@@ -80,4 +80,17 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
             ORDER BY CAST(i.fechaInscripcion AS date)
             """)
     List<Object[]> countAsistenciasPorDia(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("""
+            SELECT UPPER(TRIM(i.estado)), COUNT(i)
+            FROM Inscripcion i
+            GROUP BY UPPER(TRIM(i.estado))
+            """)
+    List<Object[]> countSolicitudesPorEstado();
+
+    @Query("""
+            SELECT COUNT(i) FROM Inscripcion i
+            WHERE UPPER(TRIM(i.estado)) NOT IN ('INACTIVO', 'CANCELLED')
+            """)
+    long countInscripcionesActivasGlobales();
 }

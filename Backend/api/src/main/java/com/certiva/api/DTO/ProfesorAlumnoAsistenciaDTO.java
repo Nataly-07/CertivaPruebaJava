@@ -9,19 +9,15 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EventoRevisionAlumnoDTO {
+public class ProfesorAlumnoAsistenciaDTO {
 
     private Long idInscripcion;
     private String nombres;
     private String apellidos;
     private String correo;
+    private String numeroDocumento;
     private String estadoInscripcion;
-    private Double nota;
-    private String observaciones;
-    private Long idResultadoEvaluacion;
-    private Integer porcentajeAsistencia;
     private boolean asistenciaConfirmada;
-    private boolean cumpleAsistenciaMinima;
-    private boolean elegibleCertificado;
-    private String motivoNoElegible;
+    private int porcentajeAsistencia;
+    private String tokenQr;
 }

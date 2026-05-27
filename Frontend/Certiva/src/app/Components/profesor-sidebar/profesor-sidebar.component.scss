@@ -1,0 +1,13 @@
+@use '../../pages/administracion/dashboard/dashboard.scss';
+
+:host {
+  display: contents;
+}
+
+:host-context(.sidebar-collapsed) .sidebar {
+  width: 72px;
+}
+
+.sidebar-logo img {
+  height: 32px;
+}
