@@ -68,13 +68,24 @@ export const STAFF_UI = {
 
 export type TipoStaffUi = keyof typeof STAFF_UI;
 
-export function etiquetaRol(codigo: string | null | undefined): string {
+export function normalizarCodigoRol(codigo: string | null | undefined): string {
   if (!codigo?.trim()) {
     return '';
   }
-  const upper = codigo.trim().toUpperCase();
-  const conPrefijo = upper.startsWith('ROLE_') ? upper : `ROLE_${upper}`;
-  return ETIQUETAS_ROL[upper] ?? ETIQUETAS_ROL[conPrefijo] ?? humanizarCodigo(upper);
+  let valor = codigo.trim().toUpperCase();
+  while (valor.startsWith('ROLE_')) {
+    valor = valor.slice(5);
+  }
+  return valor;
+}
+
+export function etiquetaRol(codigo: string | null | undefined): string {
+  const normalizado = normalizarCodigoRol(codigo);
+  if (!normalizado) {
+    return '';
+  }
+  const conPrefijo = `ROLE_${normalizado}`;
+  return ETIQUETAS_ROL[normalizado] ?? ETIQUETAS_ROL[conPrefijo] ?? humanizarCodigo(normalizado);
 }
 
 function humanizarCodigo(codigo: string): string {

@@ -6,16 +6,20 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../../Services/auth.service';
 import { EventoService } from '../../../Services/evento.service';
 import {
+  EventoContenidoAcademicoDTO,
   EventoAsistenciaEnVivoDTO,
   EventoRevisionAlumnoDTO,
   EventoRevisionPanelDTO,
+  GuardarEventoContenidoAcademicoDTO,
   GuardarRevisionAlumnoDTO,
+  ProfesorParticipanteDTO,
   ProfesorEventoTarjetaDTO,
   ProfesorPanelDTO,
 } from '../../../Models/portal-dto';
 import { etiquetaTipoEvento } from '../../../constants/ui-labels';
 import { etiquetaEstadoEvento } from '../../../constants/estado-evento';
 import { EventoCierreResultadoDTO } from '../../../Models/evento-dto';
+import { EventoDTO } from '../../../Models/evento-dto';
 import { mensajeErrorHttp } from '../../../utils/http-error-message';
 import { ProfesorSidebarComponent } from '../../../Components/profesor-sidebar/profesor-sidebar.component';
 
@@ -53,6 +57,25 @@ export class MiPanel implements OnInit {
   filasRevisionEdit: EventoRevisionAlumnoDTO[] = [];
   guardandoEvaluaciones = signal(false);
   pasoCertificacion = signal(false);
+  modalContenidoAbierto = signal(false);
+  contenidoCargando = signal(false);
+  guardandoContenido = signal(false);
+  contenidoEventoSeleccionado = signal<ProfesorEventoTarjetaDTO | null>(null);
+  contenido: GuardarEventoContenidoAcademicoDTO = {
+    avisosReglas: '',
+    recursos: [],
+    materialGuia: '',
+    retoTecnicoCentral: '',
+    premiosIncentivos: '',
+    criteriosEvaluacion: '',
+  };
+  nuevoRecurso = { tipo: 'ENLACE', titulo: '', url: '' };
+  modalParticipantesAbierto = signal(false);
+  participantesCargando = signal(false);
+  participantes: ProfesorParticipanteDTO[] = [];
+  participantesEventoSeleccionado = signal<ProfesorEventoTarjetaDTO | null>(null);
+  eventosSistema = signal<EventoDTO[]>([]);
+  eventosSistemaLoading = signal(false);
 
   ngOnInit(): void {
     this.recargarPanel();
@@ -107,7 +130,93 @@ export class MiPanel implements OnInit {
   }
 
   irCrearEvento(): void {
-    this.router.navigate(['/admin/eventos']);
+    this.accionMsg.set('La creación global de eventos la realiza el organizador.');
+  }
+
+  abrirContenidoAcademico(ev: ProfesorEventoTarjetaDTO): void {
+    this.contenidoEventoSeleccionado.set(ev);
+    this.modalContenidoAbierto.set(true);
+    this.contenidoCargando.set(true);
+    this.eventoService.obtenerContenidoAcademico(ev.idEvento).subscribe({
+      next: (data: EventoContenidoAcademicoDTO) => {
+        this.contenido = {
+          avisosReglas: data.avisosReglas ?? '',
+          recursos: data.recursos ?? [],
+          materialGuia: data.materialGuia ?? '',
+          retoTecnicoCentral: data.retoTecnicoCentral ?? '',
+          premiosIncentivos: data.premiosIncentivos ?? '',
+          criteriosEvaluacion: data.criteriosEvaluacion ?? '',
+        };
+        this.contenidoCargando.set(false);
+      },
+      error: err => {
+        this.contenidoCargando.set(false);
+        this.modalContenidoAbierto.set(false);
+        this.accionMsg.set(err?.error?.mensaje || 'No se pudo cargar el contenido académico.');
+      },
+    });
+  }
+
+  cerrarModalContenido(): void {
+    this.modalContenidoAbierto.set(false);
+    this.contenidoEventoSeleccionado.set(null);
+  }
+
+  agregarRecurso(): void {
+    const titulo = this.nuevoRecurso.titulo.trim();
+    const url = this.nuevoRecurso.url.trim();
+    if (!titulo || !url) {
+      return;
+    }
+    this.contenido.recursos = [
+      ...this.contenido.recursos,
+      { tipo: this.nuevoRecurso.tipo.trim().toUpperCase(), titulo, url },
+    ];
+    this.nuevoRecurso = { tipo: 'ENLACE', titulo: '', url: '' };
+  }
+
+  eliminarRecurso(idx: number): void {
+    this.contenido.recursos = this.contenido.recursos.filter((_, i) => i !== idx);
+  }
+
+  guardarContenidoAcademico(): void {
+    const ev = this.contenidoEventoSeleccionado();
+    if (!ev) return;
+    this.guardandoContenido.set(true);
+    this.eventoService.guardarContenidoAcademico(ev.idEvento, this.contenido).subscribe({
+      next: () => {
+        this.guardandoContenido.set(false);
+        this.accionMsg.set('Contenido académico actualizado.');
+      },
+      error: err => {
+        this.guardandoContenido.set(false);
+        this.accionMsg.set(err?.error?.mensaje || 'No se pudo guardar el contenido académico.');
+      },
+    });
+  }
+
+  abrirParticipantes(ev: ProfesorEventoTarjetaDTO): void {
+    this.participantesEventoSeleccionado.set(ev);
+    this.modalParticipantesAbierto.set(true);
+    this.participantesCargando.set(true);
+    this.participantes = [];
+    this.eventoService.listarParticipantesAsignados(ev.idEvento).subscribe({
+      next: data => {
+        this.participantes = data;
+        this.participantesCargando.set(false);
+      },
+      error: err => {
+        this.participantesCargando.set(false);
+        this.modalParticipantesAbierto.set(false);
+        this.accionMsg.set(err?.error?.mensaje || 'No se pudo cargar la lista de participantes.');
+      },
+    });
+  }
+
+  cerrarModalParticipantes(): void {
+    this.modalParticipantesAbierto.set(false);
+    this.participantesEventoSeleccionado.set(null);
+    this.participantes = [];
   }
 
   abrirAsistenciaPorId(idEvento: number, nombreEvento?: string): void {
@@ -122,7 +231,7 @@ export class MiPanel implements OnInit {
     this.modalAsistenciaAbierto.set(true);
     this.asistenciaCargando.set(true);
     this.asistenciaEnVivo.set(null);
-    this.eventoService.obtenerAsistenciaEnVivo(ev.idEvento).subscribe({
+    this.eventoService.obtenerMatrizAsistencia(ev.idEvento).subscribe({
       next: data => {
         this.asistenciaEnVivo.set(data);
         this.asistenciaCargando.set(false);
@@ -145,7 +254,7 @@ export class MiPanel implements OnInit {
     const ev = this.eventoAsistenciaSeleccionado();
     if (!ev) return;
     this.asistenciaCargando.set(true);
-    this.eventoService.obtenerAsistenciaEnVivo(ev.idEvento).subscribe({
+    this.eventoService.obtenerMatrizAsistencia(ev.idEvento).subscribe({
       next: data => {
         this.asistenciaEnVivo.set(data);
         this.asistenciaCargando.set(false);
@@ -244,6 +353,10 @@ export class MiPanel implements OnInit {
     ) {
       return;
     }
+    if (!this.puedeClausurarCurso()) {
+      this.accionMsg.set('El botón Clausurar Curso solo está habilitado cuando el evento está POR_CERTIFICAR.');
+      return;
+    }
     this.accionandoId.set(ev.idEvento);
     this.eventoService.cerrarYCertificar(ev.idEvento).subscribe({
       next: (res: EventoCierreResultadoDTO) => {
@@ -281,6 +394,7 @@ export class MiPanel implements OnInit {
         this.panel.set(data);
         this.loading.set(false);
         this.seleccionarTabConDatos(data);
+        this.cargarEventosSistema();
       },
       error: err => {
         this.loading.set(false);
@@ -297,5 +411,58 @@ export class MiPanel implements OnInit {
     } else if ((p.historial?.length ?? 0) > 0) {
       this.tabActiva.set('HISTORIAL');
     }
+  }
+
+  private cargarEventosSistema(): void {
+    this.eventosSistemaLoading.set(true);
+    this.eventoService.listar({ soloActivos: true }).subscribe({
+      next: data => {
+        this.eventosSistema.set(data);
+        this.eventosSistemaLoading.set(false);
+      },
+      error: () => {
+        this.eventosSistemaLoading.set(false);
+      },
+    });
+  }
+
+  esEventoPropio(evento: EventoDTO): boolean {
+    const p = this.panel();
+    if (!p) return false;
+    const ids = new Set<number>([
+      ...(p.enCurso ?? []).map(e => e.idEvento),
+      ...(p.pendientesCierre ?? []).map(e => e.idEvento),
+      ...(p.historial ?? []).map(e => e.idEvento),
+    ]);
+    return ids.has(evento.idEvento);
+  }
+
+  registrarAsistenciaManual(alumnoIdInscripcion: number): void {
+    const ev = this.eventoAsistenciaSeleccionado();
+    if (!ev) return;
+    const justification = prompt('Justificación obligatoria para asistencia manual:');
+    if (!justification || !justification.trim()) {
+      return;
+    }
+    this.eventoService
+      .registrarAsistenciaManual({
+        eventId: ev.idEvento,
+        idInscripcion: alumnoIdInscripcion,
+        justification: justification.trim(),
+      })
+      .subscribe({
+        next: (res) => {
+          this.accionMsg.set(res.mensaje || 'Asistencia manual registrada.');
+          this.refrescarAsistenciaEnVivo();
+        },
+        error: (err) => {
+          this.accionMsg.set(err?.error?.mensaje || 'No se pudo registrar la asistencia manual.');
+        },
+      });
+  }
+
+  puedeClausurarCurso(): boolean {
+    const estado = this.revision()?.estadoOperativo ?? this.eventoRevisionSeleccionado()?.estadoOperativo;
+    return estado === 'EN_REVISION';
   }
 }

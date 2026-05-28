@@ -7,6 +7,7 @@ import { DashboardActivityDTO, DashboardDTO } from '../../../Models/dashboard-dt
 import { DashboardKpiCard } from './components/dashboard-kpi-card/dashboard-kpi-card';
 import { DashboardRolesDoughnut } from './components/dashboard-roles-doughnut/dashboard-roles-doughnut';
 import { DashboardActivityChart } from './components/dashboard-activity-chart/dashboard-activity-chart';
+import { etiquetaRol } from '../../../constants/ui-labels';
 
 @Component({
   selector: 'app-dashboard',
@@ -47,6 +48,10 @@ export class Dashboard implements OnInit {
 
   get usuario() {
     return this.authService.getUsuario();
+  }
+
+  get nombreRolUsuario(): string {
+    return etiquetaRol(this.usuario?.rol?.nombre ?? this.usuario?.rol?.codigo ?? '');
   }
 
   get isAdmin(): boolean {

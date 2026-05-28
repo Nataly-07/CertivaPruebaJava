@@ -117,6 +117,8 @@ export interface ProfesorAlumnoAsistenciaDTO {
   numeroDocumento?: string;
   estadoInscripcion: string;
   asistenciaConfirmada: boolean;
+  checkInsAcumulados?: number;
+  sesionesTotales?: number;
   porcentajeAsistencia: number;
   tokenQr?: string;
 }
@@ -128,6 +130,7 @@ export interface EventoAsistenciaEnVivoDTO {
   totalInscritos: number;
   asistenciasConfirmadas: number;
   porcentajeAsistenciaGlobal: number;
+  asistenciaPromedioSesionHoy?: number;
   alumnos: ProfesorAlumnoAsistenciaDTO[];
 }
 
@@ -135,4 +138,48 @@ export interface GuardarRevisionAlumnoDTO {
   idInscripcion: number;
   nota?: number | null;
   observaciones?: string | null;
+}
+
+export interface RecursoAcademicoDTO {
+  tipo: string;
+  titulo: string;
+  url: string;
+}
+
+export interface EventoContenidoAcademicoDTO {
+  idEvento: number;
+  nombreEvento: string;
+  tipoEvento?: string;
+  avisosReglas?: string | null;
+  recursos: RecursoAcademicoDTO[];
+  materialGuia?: string | null;
+  retoTecnicoCentral?: string | null;
+  premiosIncentivos?: string | null;
+  criteriosEvaluacion?: string | null;
+}
+
+export interface GuardarEventoContenidoAcademicoDTO {
+  avisosReglas?: string | null;
+  recursos: RecursoAcademicoDTO[];
+  materialGuia?: string | null;
+  retoTecnicoCentral?: string | null;
+  premiosIncentivos?: string | null;
+  criteriosEvaluacion?: string | null;
+}
+
+export interface ProfesorParticipanteDTO {
+  idInscripcion: number;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  numeroDocumento?: string;
+  estadoInscripcion: string;
+  perfilTecnico?: string;
+}
+
+export interface AsistenciaManualRequestDTO {
+  eventId: number;
+  idInscripcion?: number;
+  studentId?: number;
+  justification: string;
 }

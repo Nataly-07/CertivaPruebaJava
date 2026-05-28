@@ -11,6 +11,7 @@ import { CrearUsuarioDTO } from '../../../Models/crear-usuario-dto';
 import { TipoDocumentoDTO } from '../../../Models/tipo-documento-dto';
 import { ImportacionCsvResultadoDTO } from '../../../Models/importacion-csv-dto';
 import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-sidebar.component';
+import { etiquetaRol, normalizarCodigoRol } from '../../../constants/ui-labels';
 
 @Component({
   selector: 'app-usuarios',
@@ -20,13 +21,6 @@ import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-s
   styleUrl: './usuarios.scss',
 })
 export class Usuarios implements OnInit {
-  readonly mapaRoles: Record<string, string> = {
-    ROLE_ADMIN: 'Administrador',
-    ROLE_PROFESOR: 'Profesor',
-    ROLE_MONITOR: 'Monitor',
-    ROLE_ESTUDIANTE: 'Estudiante (Participante)',
-  };
-
   usuarios: UsuarioDTO[] = [];
   usuariosFiltrados: UsuarioDTO[] = [];
   roles: RolDTO[] = [];
@@ -112,23 +106,17 @@ export class Usuarios implements OnInit {
   }
 
   etiquetaRolBadge(user: UsuarioDTO): string {
-    const codigo = (user.rol?.codigo ?? '').toUpperCase();
-    if (codigo && this.mapaRoles[codigo]) {
-      return this.mapaRoles[codigo];
-    }
-    const nombre = (user.rol?.nombre ?? '').toUpperCase();
-    if (nombre && this.mapaRoles[nombre]) {
-      return this.mapaRoles[nombre];
-    }
     const raw = user.rol?.nombre ?? user.rol?.codigo ?? '';
-    const limpio = raw.replace(/^ROLE_/i, '').replace(/_/g, ' ').trim().toLowerCase();
-    if (!limpio) return 'Sin rol';
-    return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+    return etiquetaRol(raw) || 'Sin rol';
+  }
+
+  etiquetaRolLista(rol: RolDTO): string {
+    return etiquetaRol(rol.nombre || rol.codigo || '') || 'Sin rol';
   }
 
   claseBadgeRol(user: UsuarioDTO): string {
     const raw = (user.rol?.codigo ?? user.rol?.nombre ?? '').toLowerCase();
-    const clave = raw.replace(/^role_/, '').replace(/\s+/g, '_');
+    const clave = normalizarCodigoRol(raw).toLowerCase().replace(/\s+/g, '_');
     return `role_${clave || 'desconocido'}`;
   }
 

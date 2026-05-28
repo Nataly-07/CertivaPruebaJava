@@ -22,6 +22,7 @@ public class EventoAsistenciaEnVivoDTO {
     private long totalInscritos;
     private long asistenciasConfirmadas;
     private int porcentajeAsistenciaGlobal;
+    private int asistenciaPromedioSesionHoy;
 
     @Builder.Default
     private List<ProfesorAlumnoAsistenciaDTO> alumnos = new ArrayList<>();

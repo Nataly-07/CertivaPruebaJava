@@ -99,12 +99,12 @@
       @if (usuario) {
         <div class="user-info">
           <div class="user-avatar">
-            {{ usuario.nombres?.charAt(0) }}{{ usuario.apellidos?.charAt(0) }}
+            {{ usuario.nombres.charAt(0) }}{{ usuario.apellidos.charAt(0) }}
           </div>
           @if (!sidebarCollapsed) {
             <div class="user-details">
               <span class="user-name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
-              <span class="user-role">{{ usuario.rol?.nombre }}</span>
+              <span class="user-role">{{ nombreRolUsuario }}</span>
             </div>
           }
         </div>

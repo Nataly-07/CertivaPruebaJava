@@ -13,7 +13,12 @@ import com.certiva.api.DTO.EventoPublicoDTO;
 import com.certiva.api.DTO.EventoResumenTipoDTO;
 import com.certiva.api.DTO.EventoRevisionPanelDTO;
 import com.certiva.api.DTO.EventoAsistenciaEnVivoDTO;
+import com.certiva.api.DTO.AsistenciaManualRequestDTO;
+import com.certiva.api.DTO.CheckInRespuestaDTO;
+import com.certiva.api.DTO.EventoContenidoAcademicoDTO;
+import com.certiva.api.DTO.GuardarEventoContenidoAcademicoDTO;
 import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
+import com.certiva.api.DTO.ProfesorParticipanteDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -64,6 +69,14 @@ public interface EventoService {
     EventoAsistenciaEnVivoDTO obtenerAsistenciaEnVivo(Long idEvento);
 
     EventoRevisionPanelDTO guardarEvaluacionesRevision(Long idEvento, GuardarRevisionEvaluacionesDTO dto);
+
+    EventoContenidoAcademicoDTO obtenerContenidoAcademico(Long idEvento);
+
+    EventoContenidoAcademicoDTO guardarContenidoAcademico(Long idEvento, GuardarEventoContenidoAcademicoDTO dto);
+
+    List<ProfesorParticipanteDTO> listarParticipantesAsignados(Long idEvento);
+
+    CheckInRespuestaDTO registrarAsistenciaManual(AsistenciaManualRequestDTO dto);
 
     void cancelarEvento(Long idEvento);
 }

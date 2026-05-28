@@ -68,7 +68,7 @@ export const routes: Routes = [
   {
     path: 'admin/eventos',
     loadComponent: () => import('./pages/administracion/eventos/eventos').then(m => m.Eventos),
-    canActivate: [authGuard, profesorGuard],
+    canActivate: [authGuard, adminGuard],
   },
   {
     path: 'admin/usuarios',

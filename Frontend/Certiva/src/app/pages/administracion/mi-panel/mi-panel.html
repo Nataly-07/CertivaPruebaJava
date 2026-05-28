@@ -19,7 +19,7 @@
         <div class="alert alert-info py-2">{{ accionMsg() }}</div>
       }
 
-      @if (p.banner?.sesionActivaHoy) {
+      @if (p.banner.sesionActivaHoy) {
         <section class="prof-banner prof-banner--live glass-card">
           <div class="prof-banner__body">
             <h2 class="prof-banner__title">Sesión activa hoy</h2>
@@ -53,6 +53,11 @@
           <span class="kpi-card__label">En revisión</span>
         </article>
       </div>
+      @if (asistenciaEnVivo(); as avCard) {
+        <div class="alert alert-info py-2">
+          Asistencia promedio de la sesión de hoy: <strong>{{ avCard.asistenciaPromedioSesionHoy ?? avCard.porcentajeAsistenciaGlobal }}%</strong>
+        </div>
+      }
 
       <section class="cursos-section glass-card">
         <div class="cursos-section__head">
@@ -94,11 +99,20 @@
                 </p>
                 <div class="curso-card__actions">
                   @if (tabActiva() === 'EN_CURSO') {
+                    <button type="button" class="btn btn-sm btn-outline-light" (click)="abrirContenidoAcademico(ev)">
+                      Materiales y avisos
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-light" (click)="abrirParticipantes(ev)">
+                      Ver participantes
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-light" (click)="abrirAsistenciaEnVivo(ev)">
                       Lista de alumnos · QR en vivo
                     </button>
                   }
                   @if (tabActiva() === 'EN_REVISION') {
+                    <button type="button" class="btn btn-sm btn-outline-light" (click)="abrirParticipantes(ev)">
+                      Ver participantes
+                    </button>
                     @if (ev.requiereIniciarRevision) {
                       <button type="button" class="btn btn-sm btn-outline-warning" [disabled]="accionandoId() === ev.idEvento" (click)="iniciarRevision(ev)">
                         Iniciar revisión
@@ -110,6 +124,35 @@
                   }
                   @if (tabActiva() === 'HISTORIAL') {
                     <span class="curso-card__readonly">Solo lectura — evento cerrado y certificado</span>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="cursos-section glass-card mt-3">
+        <div class="cursos-section__head">
+          <h2 class="h5 mb-0">Eventos del sistema (vista global)</h2>
+        </div>
+        @if (eventosSistemaLoading()) {
+          <p class="text-secondary">Cargando eventos del sistema…</p>
+        } @else {
+          <div class="curso-cards">
+            @for (ev of eventosSistema(); track ev.idEvento) {
+              <article class="curso-card">
+                <header class="curso-card__head">
+                  <h3 class="curso-card__title">{{ ev.nombreEvento }}</h3>
+                  <span class="curso-card__tipo">{{ etiquetaTipo(ev.tipoEvento) }}</span>
+                </header>
+                <p class="curso-card__estado">{{ etiquetaEstado(ev.estadoOperativo) }}</p>
+                <p class="curso-card__fechas">{{ ev.fechaInicio | date: 'mediumDate' }} — {{ ev.fechaFin | date: 'shortTime' }}</p>
+                <div class="curso-card__actions">
+                  @if (esEventoPropio(ev)) {
+                    <span class="badge bg-success">Gestionar / Auditar habilitado</span>
+                  } @else {
+                    <span class="badge bg-secondary">Solo lectura · Profesor colega</span>
                   }
                 </div>
               </article>
@@ -134,7 +177,7 @@
         <p class="modal-revision__sub px-3">
           <strong>{{ av.nombreEvento }}</strong> —
           {{ av.asistenciasConfirmadas }} / {{ av.totalInscritos }} asistencias confirmadas
-          ({{ av.porcentajeAsistenciaGlobal }}% global)
+          ({{ av.porcentajeAsistenciaGlobal }}% global · promedio hoy {{ av.asistenciaPromedioSesionHoy ?? av.porcentajeAsistenciaGlobal }}%)
         </p>
         <div class="px-3 pb-2">
           <button type="button" class="btn btn-sm btn-outline-light" (click)="refrescarAsistenciaEnVivo()">↻ Actualizar</button>
@@ -145,8 +188,10 @@
               <tr>
                 <th>Estudiante</th>
                 <th>Documento</th>
+                <th>Check-ins</th>
                 <th>% Asist.</th>
                 <th>Check-in QR</th>
+                <th>Acción manual</th>
               </tr>
             </thead>
             <tbody>
@@ -157,6 +202,7 @@
                     <div class="small text-muted">{{ al.correo }}</div>
                   </td>
                   <td>{{ al.numeroDocumento }}</td>
+                  <td>{{ al.checkInsAcumulados ?? 0 }} / {{ al.sesionesTotales ?? 1 }}</td>
                   <td>{{ al.porcentajeAsistencia }}%</td>
                   <td>
                     @if (al.asistenciaConfirmada) {
@@ -165,6 +211,11 @@
                       <span class="badge bg-secondary">Pendiente</span>
                     }
                   </td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-outline-warning" (click)="registrarAsistenciaManual(al.idInscripcion)">
+                      Acceso rápido
+                    </button>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -172,6 +223,108 @@
         </div>
         <footer class="modal-revision__foot">
           <button type="button" class="btn btn-outline-light" (click)="cerrarModalAsistencia()">Cerrar</button>
+        </footer>
+      }
+    </div>
+  </div>
+}
+
+@if (modalContenidoAbierto()) {
+  <div class="modal-overlay" (click)="cerrarModalContenido()">
+    <div class="modal-revision glass-card modal-revision--wide" (click)="$event.stopPropagation()">
+      <header class="modal-revision__head">
+        <h2>Contenido académico — {{ contenidoEventoSeleccionado()?.nombreEvento }}</h2>
+        <button type="button" class="modal-close" (click)="cerrarModalContenido()">×</button>
+      </header>
+      @if (contenidoCargando()) {
+        <p class="p-3 text-secondary">Cargando contenido…</p>
+      } @else {
+        <div class="p-3">
+          <label class="form-label-dark">Avisos / reglas / pautas del reto</label>
+          <textarea class="form-control form-control-dark mb-3" rows="3" [(ngModel)]="contenido.avisosReglas"></textarea>
+
+          <h6>Recursos académicos</h6>
+          <div class="row g-2 mb-2">
+            <div class="col-md-3">
+              <select class="form-select form-select-dark" [(ngModel)]="nuevoRecurso.tipo">
+                <option value="ENLACE">Enlace</option>
+                <option value="GITHUB">GitHub</option>
+                <option value="DOCUMENTO">Documento</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <input class="form-control form-control-dark" placeholder="Título" [(ngModel)]="nuevoRecurso.titulo" />
+            </div>
+            <div class="col-md-4">
+              <input class="form-control form-control-dark" placeholder="URL" [(ngModel)]="nuevoRecurso.url" />
+            </div>
+            <div class="col-md-1">
+              <button type="button" class="btn btn-sm btn-outline-light w-100" (click)="agregarRecurso()">+</button>
+            </div>
+          </div>
+          <ul class="small mb-3">
+            @for (r of contenido.recursos; track $index; let i = $index) {
+              <li>
+                <strong>{{ r.tipo }}</strong> — {{ r.titulo }} ({{ r.url }})
+                <button type="button" class="btn btn-link btn-sm p-0 ms-2" (click)="eliminarRecurso(i)">Quitar</button>
+              </li>
+            }
+          </ul>
+
+          <label class="form-label-dark">Material guía (Taller)</label>
+          <textarea class="form-control form-control-dark mb-2" rows="2" [(ngModel)]="contenido.materialGuia"></textarea>
+          <label class="form-label-dark">Reto técnico central (Hackathon)</label>
+          <textarea class="form-control form-control-dark mb-2" rows="2" [(ngModel)]="contenido.retoTecnicoCentral"></textarea>
+          <label class="form-label-dark">Premios / incentivos (Hackathon)</label>
+          <textarea class="form-control form-control-dark mb-2" rows="2" [(ngModel)]="contenido.premiosIncentivos"></textarea>
+          <label class="form-label-dark">Criterios de evaluación (Feria/Torneo)</label>
+          <textarea class="form-control form-control-dark mb-2" rows="2" [(ngModel)]="contenido.criteriosEvaluacion"></textarea>
+        </div>
+        <footer class="modal-revision__foot">
+          <button type="button" class="btn btn-outline-light" (click)="cerrarModalContenido()">Cerrar</button>
+          <button type="button" class="btn btn-gradient" [disabled]="guardandoContenido()" (click)="guardarContenidoAcademico()">
+            {{ guardandoContenido() ? 'Guardando…' : 'Guardar contenido' }}
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}
+
+@if (modalParticipantesAbierto()) {
+  <div class="modal-overlay" (click)="cerrarModalParticipantes()">
+    <div class="modal-revision glass-card modal-revision--wide" (click)="$event.stopPropagation()">
+      <header class="modal-revision__head">
+        <h2>Participantes inscritos — {{ participantesEventoSeleccionado()?.nombreEvento }}</h2>
+        <button type="button" class="modal-close" (click)="cerrarModalParticipantes()">×</button>
+      </header>
+      @if (participantesCargando()) {
+        <p class="p-3 text-secondary">Cargando participantes…</p>
+      } @else {
+        <div class="table-responsive modal-revision__table-wrap">
+          <table class="table table-dark table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Correo</th>
+                <th>Documento</th>
+                <th>Perfil tecnológico</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of participantes; track p.idInscripcion) {
+                <tr>
+                  <td>{{ p.nombres }} {{ p.apellidos }}</td>
+                  <td>{{ p.correo }}</td>
+                  <td>{{ p.numeroDocumento }}</td>
+                  <td>{{ p.perfilTecnico || 'Sin datos' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="modal-revision__foot">
+          <button type="button" class="btn btn-outline-light" (click)="cerrarModalParticipantes()">Cerrar</button>
         </footer>
       }
     </div>
@@ -305,7 +458,7 @@
             <button
               type="button"
               class="btn btn-gradient btn-cert-launch"
-              [disabled]="accionandoId() !== null || contarElegibles() === 0"
+              [disabled]="accionandoId() !== null || contarElegibles() === 0 || !puedeClausurarCurso()"
               (click)="confirmarCierreDesdeModal()"
             >
               ⚡ Generar certificados PDF masivos y cerrar evento

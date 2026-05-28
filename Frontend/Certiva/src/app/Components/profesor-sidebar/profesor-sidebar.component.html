@@ -10,8 +10,8 @@
     <a routerLink="/admin/mi-panel" routerLinkActive="active" class="nav-item">
       @if (!collapsed) { <span>Mi panel / Mis cursos</span> } @else { <span>◆</span> }
     </a>
-    <a routerLink="/admin/eventos" routerLinkActive="active" class="nav-item">
-      @if (!collapsed) { <span>Crear evento</span> }
+    <a routerLink="/admin/mi-panel" routerLinkActive="active" class="nav-item">
+      @if (!collapsed) { <span>Contenido y evaluación</span> }
     </a>
     <a routerLink="/admin/check-in" routerLinkActive="active" class="nav-item">
       @if (!collapsed) { <span>Check-in QR</span> }
@@ -20,7 +20,7 @@
   <div class="sidebar-footer">
     @if (usuario) {
       <div class="user-info">
-        <div class="user-avatar">{{ usuario.nombres?.charAt(0) }}{{ usuario.apellidos?.charAt(0) }}</div>
+        <div class="user-avatar">{{ usuario.nombres.charAt(0) }}{{ usuario.apellidos.charAt(0) }}</div>
         @if (!collapsed) {
           <div class="user-details">
             <span class="user-name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>

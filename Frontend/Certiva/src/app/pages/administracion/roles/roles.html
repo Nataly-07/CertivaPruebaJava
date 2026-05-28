@@ -78,7 +78,7 @@
                   @if (editingRol?.idRol === rol.idRol) {
                     <input type="text" class="form-control form-control-sm" [(ngModel)]="editRol.nombre" />
                   } @else {
-                    <strong>{{ rol.nombre }}</strong>
+                    <strong>{{ displayRolName(rol.nombre) }}</strong>
                   }
                 </td>
                 <td>

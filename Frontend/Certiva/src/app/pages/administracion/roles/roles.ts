@@ -6,6 +6,7 @@ import { AuthService } from '../../../Services/auth.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { etiquetaRol } from '../../../constants/ui-labels';
 
 @Component({
   selector: 'app-roles',
@@ -80,7 +81,7 @@ export class Roles implements OnInit {
   openEdit(rol: RolDTO): void {
     this.editingRol = rol;
     this.editRol = {
-      nombre: rol.nombre.replace(/^ROLE_/, ''),
+      nombre: this.displayRolName(rol.nombre),
       descripcion: rol.descripcion ?? ''
     };
   }
@@ -106,7 +107,7 @@ export class Roles implements OnInit {
   }
 
   inactivarRol(rol: RolDTO): void {
-    if (!confirm(`¿Estás seguro de inactivar el rol "${rol.nombre}"?`)) return;
+    if (!confirm(`¿Estás seguro de inactivar el rol "${this.displayRolName(rol.nombre)}"?`)) return;
 
     this.rolService.inactivarRol(rol.idRol).subscribe({
       next: () => {
@@ -121,7 +122,7 @@ export class Roles implements OnInit {
   }
 
   displayRolName(nombre: string): string {
-    return nombre.replace(/^ROLE_/, '');
+    return etiquetaRol(nombre);
   }
 
   logout(): void {

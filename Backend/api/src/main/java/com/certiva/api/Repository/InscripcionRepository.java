@@ -18,6 +18,7 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
     List<Inscripcion> findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(Long idUsuario);
 
     List<Inscripcion> findByEvento_IdEvento(Long idEvento);
+    Optional<Inscripcion> findByEvento_IdEventoAndUsuario_IdUsuario(Long idEvento, Long idUsuario);
 
     @Query("""
             SELECT i FROM Inscripcion i
@@ -27,6 +28,17 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
             ORDER BY u.apellidos ASC, u.nombres ASC
             """)
     List<Inscripcion> findActivasPorEventoConUsuario(@Param("idEvento") Long idEvento);
+
+    @Query("""
+            SELECT DISTINCT i FROM Inscripcion i
+            JOIN FETCH i.usuario u
+            LEFT JOIN FETCH i.respuestasFormulario r
+            LEFT JOIN FETCH r.campo c
+            WHERE i.evento.idEvento = :idEvento
+              AND UPPER(TRIM(i.estado)) NOT IN ('INACTIVO', 'CANCELLED')
+            ORDER BY u.apellidos ASC, u.nombres ASC
+            """)
+    List<Inscripcion> findActivasPorEventoConUsuarioYRespuestas(@Param("idEvento") Long idEvento);
 
     @Query("""
             SELECT COUNT(i) FROM Inscripcion i

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../Services/auth.service';
+import { etiquetaRol } from '../../constants/ui-labels';
 
 @Component({
   selector: 'app-admin-sidebar',
@@ -21,6 +22,10 @@ export class AdminSidebarComponent {
 
   get usuario() {
     return this.authService.getUsuario();
+  }
+
+  get nombreRolUsuario(): string {
+    return etiquetaRol(this.usuario?.rol?.nombre ?? this.usuario?.rol?.codigo ?? '');
   }
 
   toggle(): void {

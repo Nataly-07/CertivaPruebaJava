@@ -20,6 +20,7 @@ import com.certiva.api.Service.CertificadoService;
 import com.certiva.api.Service.EventoCicloVidaService;
 import com.certiva.api.Util.EventoEdicionPolicy;
 import com.certiva.api.Util.EstadoOperativoEventoHelper;
+import com.certiva.api.Util.ProfesorEventoAccessHelper;
 import com.certiva.api.Util.InscripcionEstadoHelper;
 import com.certiva.api.Util.SecurityUsuarioHelper;
 import com.certiva.api.enums.AuditoriaAccion;
@@ -88,7 +89,10 @@ public class EventoCicloVidaServiceImpl implements EventoCicloVidaService {
     @Transactional
     public void iniciarRevision(Long idEvento) {
         asegurarProfesorOAdmin();
-        Evento evento = cargarEvento(idEvento);
+        Evento evento = cargarEventoConStaff(idEvento);
+        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+            ProfesorEventoAccessHelper.asegurarGestionEvento(evento, securityUsuarioHelper.usuarioAutenticado());
+        }
         sincronizarSiAutomatico(evento);
         if (evento.getEstadoOperativo() != EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
             throw new OperacionNoPermitidaException(
@@ -108,6 +112,10 @@ public class EventoCicloVidaServiceImpl implements EventoCicloVidaService {
     @Transactional
     public EventoCierreResultadoDTO cerrarEventoYCertificar(Long idEvento) {
         asegurarProfesorOAdmin();
+        Evento evento = cargarEventoConStaff(idEvento);
+        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+            ProfesorEventoAccessHelper.asegurarGestionEvento(evento, securityUsuarioHelper.usuarioAutenticado());
+        }
         return ejecutarCierre(idEvento, false);
     }
 
@@ -193,6 +201,13 @@ public class EventoCicloVidaServiceImpl implements EventoCicloVidaService {
     private Evento cargarEvento(Long idEvento) {
         return eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
+    }
+
+    private Evento cargarEventoConStaff(Long idEvento) {
+        Evento evento = cargarEvento(idEvento);
+        eventoRepository.findByIdConProfesores(idEvento)
+                .ifPresent(e -> evento.setProfesoresColaboradores(e.getProfesoresColaboradores()));
+        return evento;
     }
 
     private void asegurarAdmin() {

@@ -29,7 +29,10 @@ import com.certiva.api.DTO.EventoResumenTipoDTO;
 import com.certiva.api.DTO.EventoCierreResultadoDTO;
 import com.certiva.api.DTO.EventoRevisionPanelDTO;
 import com.certiva.api.DTO.EventoAsistenciaEnVivoDTO;
+import com.certiva.api.DTO.EventoContenidoAcademicoDTO;
+import com.certiva.api.DTO.GuardarEventoContenidoAcademicoDTO;
 import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
+import com.certiva.api.DTO.ProfesorParticipanteDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
 import com.certiva.api.DTO.ReasignarStaffDTO;
 import com.certiva.api.Service.EventoCicloVidaService;
@@ -81,6 +84,23 @@ public class EventoController {
             @PathVariable Long id,
             @RequestBody GuardarRevisionEvaluacionesDTO body) {
         return ResponseEntity.ok(_eventoService.guardarEvaluacionesRevision(id, body));
+    }
+
+    @GetMapping("/mi-panel/{id}/contenido-academico")
+    public ResponseEntity<EventoContenidoAcademicoDTO> contenidoAcademico(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoService.obtenerContenidoAcademico(id));
+    }
+
+    @PutMapping("/mi-panel/{id}/contenido-academico")
+    public ResponseEntity<EventoContenidoAcademicoDTO> guardarContenidoAcademico(
+            @PathVariable Long id,
+            @RequestBody GuardarEventoContenidoAcademicoDTO body) {
+        return ResponseEntity.ok(_eventoService.guardarContenidoAcademico(id, body));
+    }
+
+    @GetMapping("/mi-panel/{id}/participantes")
+    public ResponseEntity<List<ProfesorParticipanteDTO>> participantesAsignados(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoService.listarParticipantesAsignados(id));
     }
 
     @GetMapping("/resumen-tipos")

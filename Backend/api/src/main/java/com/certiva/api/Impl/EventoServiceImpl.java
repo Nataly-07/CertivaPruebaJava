@@ -28,6 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.certiva.api.DTO.CampoFormularioDTO;
+import com.certiva.api.DTO.AsistenciaManualRequestDTO;
+import com.certiva.api.DTO.CheckInRespuestaDTO;
 import com.certiva.api.DTO.CrearCampoFormularioDTO;
 import com.certiva.api.DTO.CrearEventoDTO;
 import com.certiva.api.DTO.DetalleCursoDTO;
@@ -45,8 +47,13 @@ import com.certiva.api.DTO.EventoRevisionAlumnoDTO;
 import com.certiva.api.DTO.EventoAsistenciaEnVivoDTO;
 import com.certiva.api.DTO.EventoRevisionPanelDTO;
 import com.certiva.api.DTO.GuardarRevisionAlumnoDTO;
+import com.certiva.api.DTO.EventoContenidoAcademicoDTO;
+import com.certiva.api.DTO.GuardarEventoContenidoAcademicoDTO;
 import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
 import com.certiva.api.DTO.ProfesorAlumnoAsistenciaDTO;
+import com.certiva.api.DTO.ProfesorParticipanteDTO;
+import com.certiva.api.DTO.RecursoAcademicoDTO;
+import com.certiva.api.DTO.RespuestaCampoDTO;
 import com.certiva.api.DTO.ProfesorEventoTarjetaDTO;
 import com.certiva.api.DTO.ProfesorPanelBannerDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
@@ -54,6 +61,8 @@ import com.certiva.api.DTO.ReasignarStaffDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO.ProfesorEventoResumenDTO;
 import com.certiva.api.Service.CertificadoElegibilidadService;
 import com.certiva.api.Util.ProfesorAsistenciaHelper;
+import com.certiva.api.Util.ProfesorEventoAccessHelper;
+import com.certiva.api.Entity.RespuestaFormulario;
 import com.certiva.api.Entity.CampoFormulario;
 import com.certiva.api.Entity.CursoEvento;
 import com.certiva.api.Entity.Evento;
@@ -149,7 +158,10 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public EventoDTO crearEvento(CrearEventoDTO dto, MultipartFile imagen, MultipartFile pensum) {
-        asegurarRolCrearEditar();
+        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+            throw new OperacionNoPermitidaException(
+                    "Solo el organizador (administrador) puede crear eventos globales.");
+        }
         validarFechas(dto.getFechaInicio(), dto.getFechaFin(), true);
         validarDetallePorTipo(dto);
         normalizarStaffEnDto(dto);
@@ -207,6 +219,7 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED, readOnly = true)
     public List<EventoResumenTipoDTO> listarResumenTipos(Boolean soloActivos, ModalidadEvento modalidad) {
+        asegurarSoloOrganizador();
         Boolean activo = resolverFiltroActivo(soloActivos);
         List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, null, null, null, null);
         Map<Long, Long> inscritos = mapaInscritosPorFilas(filas);
@@ -241,6 +254,7 @@ public class EventoServiceImpl implements EventoService {
                                                     LocalDateTime desde,
                                                     LocalDateTime hasta,
                                                     EstadoOperativoEvento estadoOperativo) {
+        asegurarSoloOrganizador();
         Boolean activo = resolverFiltroActivo(soloActivos);
         List<EventoListadoRow> filas = listarFilasJdbc(activo, modalidad, tipo, desde, hasta, estadoOperativo);
         Map<Long, Long> inscritos = mapaInscritosPorFilas(filas);
@@ -355,7 +369,11 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public EventoDTO actualizarEvento(EventoDTO dto) {
-        asegurarRolCrearEditar();
+        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+            throw new OperacionNoPermitidaException(
+                    "Solo el organizador puede modificar la configuración global del evento. "
+                            + "Use el panel de profesor para el contenido académico de eventos asignados.");
+        }
         if (dto.getIdEvento() == null) {
             throw new OperacionNoPermitidaException("El id del evento es obligatorio para actualizar.");
         }
@@ -681,7 +699,7 @@ public class EventoServiceImpl implements EventoService {
         Evento evento = _eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
         cargarStaffParaValidacion(evento);
-        asegurarProfesorGestionaEvento(evento, profesor);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
 
         LocalDateTime ahora = LocalDateTime.now();
         EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
@@ -732,7 +750,7 @@ public class EventoServiceImpl implements EventoService {
         Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
         Evento evento = _eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
-        asegurarProfesorGestionaEvento(evento, profesor);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
 
         LocalDateTime ahora = LocalDateTime.now();
         EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
@@ -755,6 +773,8 @@ public class EventoServiceImpl implements EventoService {
                 .asistenciasConfirmadas(asistencias)
                 .porcentajeAsistenciaGlobal(
                         ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscripciones.size()))
+                .asistenciaPromedioSesionHoy(
+                        ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscripciones.size()))
                 .alumnos(alumnos)
                 .build();
     }
@@ -766,7 +786,7 @@ public class EventoServiceImpl implements EventoService {
         Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
         Evento evento = _eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
-        asegurarProfesorGestionaEvento(evento, profesor);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
 
         LocalDateTime ahora = LocalDateTime.now();
         EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
@@ -821,6 +841,123 @@ public class EventoServiceImpl implements EventoService {
         return obtenerRevisionCierre(idEvento);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public EventoContenidoAcademicoDTO obtenerContenidoAcademico(Long idEvento) {
+        asegurarRolProfesorOAdmin();
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = cargarEventoConStaff(idEvento);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
+        return construirContenidoAcademicoDto(evento);
+    }
+
+    @Override
+    @Transactional
+    public EventoContenidoAcademicoDTO guardarContenidoAcademico(Long idEvento, GuardarEventoContenidoAcademicoDTO dto) {
+        asegurarRolProfesorOAdmin();
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = cargarEventoConStaff(idEvento);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
+
+        LocalDateTime ahora = LocalDateTime.now();
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
+        if (op == EstadoOperativoEvento.CERRADO_Y_CERTIFICADO
+                || op == EstadoOperativoEvento.EVENT_CANCELLED) {
+            throw new OperacionNoPermitidaException(
+                    "No puede modificar contenido académico de un evento cerrado o cancelado.");
+        }
+
+        evento.setAvisosReglas(dto.getAvisosReglas() != null ? dto.getAvisosReglas().trim() : null);
+        evento.setRecursosAcademicos(serializarRecursos(dto.getRecursos()));
+
+        if (evento instanceof TallerEvento taller && dto.getMaterialGuia() != null) {
+            taller.setMaterialGuia(dto.getMaterialGuia().trim());
+        }
+        if (evento instanceof HackathonEvento hack) {
+            if (dto.getRetoTecnicoCentral() != null) {
+                hack.setRetoTecnicoCentral(dto.getRetoTecnicoCentral().trim());
+            }
+            if (dto.getPremiosIncentivos() != null) {
+                hack.setPremiosIncentivos(dto.getPremiosIncentivos().trim());
+            }
+        }
+        if (evento instanceof FeriaProyectoEvento feria && dto.getCriteriosEvaluacion() != null) {
+            feria.setCriteriosEvaluacion(dto.getCriteriosEvaluacion().trim());
+        }
+
+        evento = _eventoRepository.save(evento);
+        _auditoriaService.registrarAuditoria(
+                "CONTENIDO_ACADEMICO_ACTUALIZADO",
+                "Profesor " + profesor.getIdUsuario() + " actualizó materiales/avisos del evento id=" + idEvento,
+                null,
+                profesor);
+        return construirContenidoAcademicoDto(evento);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfesorParticipanteDTO> listarParticipantesAsignados(Long idEvento) {
+        asegurarRolProfesorOAdmin();
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = cargarEventoConStaff(idEvento);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
+
+        List<Inscripcion> inscripciones = _inscripcionRepository.findActivasPorEventoConUsuarioYRespuestas(idEvento);
+        return inscripciones.stream().map(this::construirParticipanteDto).toList();
+    }
+
+    @Override
+    @Transactional
+    public CheckInRespuestaDTO registrarAsistenciaManual(AsistenciaManualRequestDTO dto) {
+        asegurarRolProfesorOAdmin();
+        if (dto.getEventId() == null) {
+            throw new OperacionNoPermitidaException("eventId es obligatorio.");
+        }
+        if (dto.getJustification() == null || dto.getJustification().trim().isBlank()) {
+            throw new OperacionNoPermitidaException("La justificación es obligatoria para check-in manual.");
+        }
+        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        Evento evento = cargarEventoConStaff(dto.getEventId());
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
+
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (op != EstadoOperativoEvento.EN_CURSO) {
+            throw new OperacionNoPermitidaException(
+                    "El check-in manual solo está permitido mientras el evento está EN_CURSO.");
+        }
+
+        Inscripcion inscripcion = resolverInscripcionParaCheckinManual(dto);
+        if (!inscripcion.getEvento().getIdEvento().equals(dto.getEventId())) {
+            throw new OperacionNoPermitidaException("La inscripción no pertenece al evento indicado.");
+        }
+        if (InscripcionEstadoHelper.esCancelada(inscripcion.getEstado())) {
+            throw new OperacionNoPermitidaException("La inscripción está cancelada.");
+        }
+
+        boolean yaConfirmada = InscripcionEstadoHelper.tieneAsistenciaConfirmada(inscripcion.getEstado());
+        if (!yaConfirmada) {
+            inscripcion.setEstado(InscripcionEstadoHelper.PRESENTE);
+            _inscripcionRepository.save(inscripcion);
+        }
+
+        _auditoriaService.registrarAuditoria(
+                "CHECKIN_MANUAL_PROFESOR",
+                "Profesor " + profesor.getIdUsuario()
+                        + " registró asistencia manual inscripción=" + inscripcion.getIdInscripcion()
+                        + " evento=" + dto.getEventId()
+                        + " justificación=" + dto.getJustification().trim(),
+                null,
+                profesor);
+
+        return CheckInRespuestaDTO.builder()
+                .mensaje(yaConfirmada
+                        ? "La asistencia ya estaba confirmada previamente."
+                        : "Asistencia manual registrada con justificación.")
+                .idInscripcion(inscripcion.getIdInscripcion())
+                .estadoInscripcion(inscripcion.getEstado())
+                .build();
+    }
+
     private EventoRevisionAlumnoDTO construirAlumnoRevision(
             Inscripcion ins,
             Evento evento,
@@ -861,6 +998,8 @@ public class EventoServiceImpl implements EventoService {
             Inscripcion ins, Evento evento, LocalDateTime ahora) {
         Usuario u = ins.getUsuario();
         boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
+        int sesionesTotales = Math.max(1, evento.getIntensidadHoraria() != null ? evento.getIntensidadHoraria() : 1);
+        int checkInsAcumulados = asistio ? 1 : 0;
         return ProfesorAlumnoAsistenciaDTO.builder()
                 .idInscripcion(ins.getIdInscripcion())
                 .nombres(u.getNombres())
@@ -869,9 +1008,24 @@ public class EventoServiceImpl implements EventoService {
                 .numeroDocumento(u.getNumeroDocumento())
                 .estadoInscripcion(ins.getEstado())
                 .asistenciaConfirmada(asistio)
+                .checkInsAcumulados(checkInsAcumulados)
+                .sesionesTotales(sesionesTotales)
                 .porcentajeAsistencia(ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(ins, evento, ahora))
                 .tokenQr(ins.getTokenQr())
                 .build();
+    }
+
+    private Inscripcion resolverInscripcionParaCheckinManual(AsistenciaManualRequestDTO dto) {
+        if (dto.getIdInscripcion() != null) {
+            return _inscripcionRepository.findById(dto.getIdInscripcion())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Inscripción no encontrada."));
+        }
+        if (dto.getStudentId() != null) {
+            return _inscripcionRepository.findByEvento_IdEventoAndUsuario_IdUsuario(dto.getEventId(), dto.getStudentId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException(
+                            "No existe inscripción activa para el estudiante en este evento."));
+        }
+        throw new OperacionNoPermitidaException("Debe indicar idInscripcion o studentId.");
     }
 
     /**
@@ -879,13 +1033,8 @@ public class EventoServiceImpl implements EventoService {
      */
     private List<Evento> listarEventosGestionadosPorProfesor(Long idProfesor) {
         Map<Long, Evento> porId = new LinkedHashMap<>();
-        for (Evento e : _eventoRepository.findByUsuarioCreador_IdUsuarioOrderByFechaInicioDesc(idProfesor)) {
-            porId.put(e.getIdEvento(), e);
-        }
         for (Long idEvento : _eventoRepository.findIdsEventoDondeEsColaborador(idProfesor)) {
-            if (!porId.containsKey(idEvento)) {
-                _eventoRepository.findById(idEvento).ifPresent(ev -> porId.put(idEvento, ev));
-            }
+            _eventoRepository.findById(idEvento).ifPresent(ev -> porId.put(idEvento, ev));
         }
         return porId.values().stream()
                 .sorted(Comparator.comparing(Evento::getFechaInicio, Comparator.nullsLast(Comparator.reverseOrder())))
@@ -961,19 +1110,97 @@ public class EventoServiceImpl implements EventoService {
         return e.getMonitoresAsignados().iterator().next();
     }
 
-    private void asegurarProfesorGestionaEvento(Evento evento, Usuario profesor) {
-        if (EventoEdicionPolicy.esAdminAutenticado()) {
-            return;
+    private void asegurarSoloOrganizador() {
+        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+            throw new OperacionNoPermitidaException("Solo el organizador puede acceder a esta vista.");
         }
-        Long id = profesor.getIdUsuario();
-        boolean creador = evento.getUsuarioCreador() != null
-                && id.equals(evento.getUsuarioCreador().getIdUsuario());
-        boolean colaborador = evento.getProfesoresColaboradores() != null
-                && evento.getProfesoresColaboradores().stream()
-                        .anyMatch(p -> id.equals(p.getIdUsuario()));
-        if (!creador && !colaborador) {
-            throw new OperacionNoPermitidaException("No tiene permiso para gestionar este evento.");
+    }
+
+    private void asegurarRolProfesorOAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new OperacionNoPermitidaException("Debe iniciar sesión.");
         }
+        boolean ok = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> "ROLE_ADMIN".equals(a) || "ROLE_PROFESOR".equals(a));
+        if (!ok) {
+            throw new OperacionNoPermitidaException("Solo profesor u organizador pueden realizar esta acción.");
+        }
+    }
+
+    private EventoContenidoAcademicoDTO construirContenidoAcademicoDto(Evento evento) {
+        EventoContenidoAcademicoDTO.EventoContenidoAcademicoDTOBuilder b = EventoContenidoAcademicoDTO.builder()
+                .idEvento(evento.getIdEvento())
+                .nombreEvento(evento.getNombreEvento())
+                .tipoEvento(evento.getTipoEvento())
+                .avisosReglas(evento.getAvisosReglas())
+                .recursos(deserializarRecursos(evento.getRecursosAcademicos()));
+        if (evento instanceof TallerEvento taller) {
+            b.materialGuia(taller.getMaterialGuia());
+        }
+        if (evento instanceof HackathonEvento hack) {
+            b.retoTecnicoCentral(hack.getRetoTecnicoCentral());
+            b.premiosIncentivos(hack.getPremiosIncentivos());
+        }
+        if (evento instanceof FeriaProyectoEvento feria) {
+            b.criteriosEvaluacion(feria.getCriteriosEvaluacion());
+        }
+        return b.build();
+    }
+
+    private String serializarRecursos(List<RecursoAcademicoDTO> recursos) {
+        if (recursos == null || recursos.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return _objectMapper.writeValueAsString(recursos);
+        } catch (Exception ex) {
+            throw new OperacionNoPermitidaException("No se pudieron guardar los recursos académicos.");
+        }
+    }
+
+    private List<RecursoAcademicoDTO> deserializarRecursos(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return _objectMapper.readValue(json, new TypeReference<List<RecursoAcademicoDTO>>() {});
+        } catch (Exception ex) {
+            return List.of();
+        }
+    }
+
+    private ProfesorParticipanteDTO construirParticipanteDto(Inscripcion ins) {
+        Usuario u = ins.getUsuario();
+        List<RespuestaCampoDTO> respuestas = new ArrayList<>();
+        StringBuilder perfil = new StringBuilder();
+        if (ins.getRespuestasFormulario() != null) {
+            for (RespuestaFormulario rf : ins.getRespuestasFormulario()) {
+                String etiqueta = rf.getCampo() != null ? rf.getCampo().getEtiqueta() : "Campo";
+                String valor = rf.getValor() != null ? rf.getValor().trim() : "";
+                Long idCampo = rf.getCampo() != null ? rf.getCampo().getIdCampo() : null;
+                if (idCampo != null) {
+                    respuestas.add(new RespuestaCampoDTO(idCampo, valor));
+                }
+                if (!valor.isBlank()) {
+                    if (perfil.length() > 0) {
+                        perfil.append(" · ");
+                    }
+                    perfil.append(etiqueta).append(": ").append(valor);
+                }
+            }
+        }
+        return ProfesorParticipanteDTO.builder()
+                .idInscripcion(ins.getIdInscripcion())
+                .nombres(u.getNombres())
+                .apellidos(u.getApellidos())
+                .correo(u.getCorreo())
+                .numeroDocumento(u.getNumeroDocumento())
+                .estadoInscripcion(ins.getEstado())
+                .perfilTecnico(perfil.length() > 0 ? perfil.toString() : "Sin datos de perfil técnico")
+                .respuestasFormulario(respuestas)
+                .build();
     }
 
     private void asegurarCodigoDifusion(Evento evento) {

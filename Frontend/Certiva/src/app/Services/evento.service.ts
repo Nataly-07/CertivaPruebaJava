@@ -15,7 +15,14 @@ import {
   ModalidadEvento,
   TipoEventoEnum,
 } from '../Models/evento-dto';
-import { EventoRevisionPanelDTO, ProfesorPanelDTO } from '../Models/portal-dto';
+import {
+  AsistenciaManualRequestDTO,
+  EventoContenidoAcademicoDTO,
+  EventoRevisionPanelDTO,
+  GuardarEventoContenidoAcademicoDTO,
+  ProfesorPanelDTO,
+  ProfesorParticipanteDTO,
+} from '../Models/portal-dto';
 import type { EventoAsistenciaEnVivoDTO, GuardarRevisionAlumnoDTO } from '../Models/portal-dto';
 import { EventoPublico } from '../Models/evento-publico';
 
@@ -154,6 +161,16 @@ export class EventoService {
     return this.http.get<EventoAsistenciaEnVivoDTO>(`${this.baseUrl}/mi-panel/${idEvento}/asistencia-en-vivo`);
   }
 
+  obtenerMatrizAsistencia(idEvento: number): Observable<EventoAsistenciaEnVivoDTO> {
+    const base = environment.API_URL.replace(/\/$/, '');
+    return this.http.get<EventoAsistenciaEnVivoDTO>(`${base}/events/${idEvento}/attendance-matrix`);
+  }
+
+  registrarAsistenciaManual(payload: AsistenciaManualRequestDTO): Observable<{ mensaje: string; idInscripcion: number }> {
+    const base = environment.API_URL.replace(/\/$/, '');
+    return this.http.post<{ mensaje: string; idInscripcion: number }>(`${base}/attendance/manual-checkin`, payload);
+  }
+
   guardarEvaluacionesRevision(
     idEvento: number,
     alumnos: GuardarRevisionAlumnoDTO[]
@@ -161,6 +178,21 @@ export class EventoService {
     return this.http.put<EventoRevisionPanelDTO>(`${this.baseUrl}/mi-panel/revision/${idEvento}/evaluaciones`, {
       alumnos,
     });
+  }
+
+  obtenerContenidoAcademico(idEvento: number): Observable<EventoContenidoAcademicoDTO> {
+    return this.http.get<EventoContenidoAcademicoDTO>(`${this.baseUrl}/mi-panel/${idEvento}/contenido-academico`);
+  }
+
+  guardarContenidoAcademico(
+    idEvento: number,
+    payload: GuardarEventoContenidoAcademicoDTO
+  ): Observable<EventoContenidoAcademicoDTO> {
+    return this.http.put<EventoContenidoAcademicoDTO>(`${this.baseUrl}/mi-panel/${idEvento}/contenido-academico`, payload);
+  }
+
+  listarParticipantesAsignados(idEvento: number): Observable<ProfesorParticipanteDTO[]> {
+    return this.http.get<ProfesorParticipanteDTO[]>(`${this.baseUrl}/mi-panel/${idEvento}/participantes`);
   }
 
   cancelarEvento(id: number): Observable<string> {

@@ -13,7 +13,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { startWith } from 'rxjs';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../Services/auth.service';
 import { EventoService, ListarEventosFiltros } from '../../../Services/evento.service';
 import {
@@ -33,7 +33,6 @@ import {
 import { StaffAutocompleteComponent } from '../../../Components/staff-autocomplete/staff-autocomplete.component';
 import { StackTagsPickerComponent } from '../../../Components/stack-tags-picker/stack-tags-picker.component';
 import { QrCodeDisplayComponent } from '../../../Components/qr-code-display/qr-code-display.component';
-import { RolEtiquetaPipe } from '../../../pipes/rol-etiqueta.pipe';
 import {
   etiquetaCategoriaFeria,
   etiquetaModalidad,
@@ -53,12 +52,9 @@ import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-s
     CommonModule,
     ReactiveFormsModule,
     FormsModule,
-    RouterLink,
-    RouterLinkActive,
     StaffAutocompleteComponent,
     StackTagsPickerComponent,
     QrCodeDisplayComponent,
-    RolEtiquetaPipe,
     AdminSidebarComponent,
   ],
   templateUrl: './eventos.html',

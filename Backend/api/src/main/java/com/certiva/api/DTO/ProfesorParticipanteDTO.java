@@ -1,5 +1,8 @@
 package com.certiva.api.DTO;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProfesorAlumnoAsistenciaDTO {
+public class ProfesorParticipanteDTO {
 
     private Long idInscripcion;
     private String nombres;
@@ -17,9 +20,8 @@ public class ProfesorAlumnoAsistenciaDTO {
     private String correo;
     private String numeroDocumento;
     private String estadoInscripcion;
-    private boolean asistenciaConfirmada;
-    private int checkInsAcumulados;
-    private int sesionesTotales;
-    private int porcentajeAsistencia;
-    private String tokenQr;
+    /** Resumen legible del perfil técnico (respuestas del formulario de inscripción). */
+    private String perfilTecnico;
+    @Builder.Default
+    private List<RespuestaCampoDTO> respuestasFormulario = new ArrayList<>();
 }

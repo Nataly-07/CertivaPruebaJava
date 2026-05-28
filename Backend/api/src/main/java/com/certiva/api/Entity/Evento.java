@@ -99,6 +99,14 @@ public abstract class Evento {
     @Column(name = "firma_digital_profesor", length = 500)
     private String firmaDigitalProfesor;
 
+    /** JSON: [{ "tipo": "ENLACE|GITHUB|DOCUMENTO", "titulo": "...", "url": "..." }] */
+    @Column(name = "recursos_academicos", columnDefinition = "TEXT")
+    private String recursosAcademicos;
+
+    /** Pautas de retos, reglas del torneo o avisos para participantes. */
+    @Column(name = "avisos_reglas", columnDefinition = "TEXT")
+    private String avisosReglas;
+
     /** Publicación / catálogo (false = evento retirado). */
     private Boolean estado = true;
 
