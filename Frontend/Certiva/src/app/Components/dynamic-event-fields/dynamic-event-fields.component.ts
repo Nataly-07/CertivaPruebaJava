@@ -20,22 +20,14 @@ const IMAGEN_MAX_BYTES = 2 * 1024 * 1024;
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './dynamic-event-fields.component.html',
-  styles: [
-    `
-      .dynamic-img-preview {
-        max-width: 100%;
-        max-height: 160px;
-        border-radius: 8px;
-        object-fit: contain;
-        border: 1px solid rgba(148, 163, 184, 0.25);
-      }
-    `,
-  ],
+  styleUrl: './dynamic-event-fields.component.scss',
 })
 export class DynamicEventFieldsComponent implements OnChanges {
   private fb = inject(FormBuilder);
 
   @Input() campos: CampoFormularioDTO[] = [];
+  /** 'inscripcion' aplica tarjetas y espaciado legible en el portal del estudiante. */
+  @Input() layout: 'default' | 'inscripcion' = 'default';
 
   form: FormGroup = this.fb.group({});
   readonly imagenPreview = signal<Record<string, string>>({});

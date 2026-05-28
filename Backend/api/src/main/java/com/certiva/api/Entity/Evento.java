@@ -83,7 +83,11 @@ public abstract class Evento {
     @Column(name = "intensidad_horaria", nullable = false)
     private Integer intensidadHoraria;
 
-    @Column(name = "imagen_promocional", length = 500)
+    /** Porcentaje mínimo de asistencia requerido para emitir certificado (1–100). */
+    @Column(name = "porcentaje_asistencia_minimo")
+    private Integer porcentajeAsistenciaMinimo = 80;
+
+    @Column(name = "imagen_promocional", columnDefinition = "TEXT")
     private String rutaImagenPromocional;
 
     @Column(name = "ruta_pensum", length = 500)
@@ -150,6 +154,9 @@ public abstract class Evento {
         }
         if (codigoDifusion == null || codigoDifusion.isBlank()) {
             codigoDifusion = UUID.randomUUID().toString().replace("-", "");
+        }
+        if (porcentajeAsistenciaMinimo == null) {
+            porcentajeAsistenciaMinimo = 80;
         }
     }
 

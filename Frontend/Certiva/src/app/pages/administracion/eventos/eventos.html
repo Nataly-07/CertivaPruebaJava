@@ -214,7 +214,7 @@
 
 @if (showCreateModal) {
   <div class="modal-overlay" (click)="closeCreateModal()">
-    <div class="modal-container modal-evento-lg glass-card" (click)="$event.stopPropagation()">
+    <div class="modal-container modal-evento-lg modal-evento-shell glass-card" (click)="$event.stopPropagation()">
       <div class="modal-header-custom">
         <h4>Nuevo evento</h4>
         <button type="button" class="modal-close" (click)="closeCreateModal()">
@@ -225,9 +225,11 @@
         </button>
       </div>
       <div class="modal-body-custom">
-        <form class="evento-form" [formGroup]="createForm" (ngSubmit)="submitCreate()">
+        <form class="evento-form evento-modal-form" [formGroup]="createForm" (ngSubmit)="submitCreate()">
+          <section class="form-section">
+            <h5 class="form-section__title">Información general</h5>
           <div class="form-field">
-            <label class="form-label-dark">Nombre del evento</label>
+            <label class="form-label-dark">Nombre del evento *</label>
             <input
               type="text"
               class="form-control form-control-dark"
@@ -250,7 +252,7 @@
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <label class="form-label-dark">Tipo</label>
+              <label class="form-label-dark">Tipo *</label>
               <select
                 class="form-select form-select-dark"
                 formControlName="tipoEvento"
@@ -266,7 +268,7 @@
               }
             </div>
             <div class="col-md-6">
-              <label class="form-label-dark">Modalidad</label>
+              <label class="form-label-dark">Modalidad *</label>
               <select class="form-select form-select-dark" formControlName="modalidad" (change)="onModalidadCrearChange()">
                 <option [ngValue]="null">Seleccione…</option>
                 @for (m of modalidades; track m) {
@@ -278,11 +280,45 @@
               }
             </div>
           </div>
+          </section>
 
+          <section class="form-section form-section--cert mini-form-card mini-form-cert">
+            <h5 class="form-section__title form-section__title--cert">Certificación</h5>
+            <p class="mini-form-desc">
+              Todos los participantes deben alcanzar al menos este porcentaje de <strong>asistencia confirmada</strong>
+              para obtener el certificado.
+            </p>
+            <label class="form-label-dark" for="asistencia-min-crear">Asistencia mínima *</label>
+            <div class="asistencia-range-block">
+              <input
+                id="asistencia-min-crear"
+                type="range"
+                class="form-range form-range--cert"
+                min="1"
+                max="100"
+                formControlName="porcentajeAsistenciaMinimo"
+                [class.is-invalid]="campoMuestraError(createForm, 'porcentajeAsistenciaMinimo')"
+              />
+              <span class="asistencia-valor">{{ createForm.get('porcentajeAsistenciaMinimo')?.value }}%</span>
+            </div>
+            @if (campoMuestraError(createForm, 'porcentajeAsistenciaMinimo')) {
+              <div class="form-hint-subtle text-danger">Indique un valor entre 1 y 100.</div>
+            }
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Cupos y duración</h5>
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label-dark">Precio</label>
-              <input type="number" class="form-control form-control-dark" formControlName="precio" min="0" step="0.01" />
+              <label class="form-label-dark">Precio (COP) *</label>
+              <input
+                type="number"
+                class="form-control form-control-dark"
+                formControlName="precio"
+                min="0"
+                step="1"
+                placeholder="0 = gratuito"
+              />
               <small class="text-muted">{{ etiquetaPrecioCreate }}</small>
             </div>
             <div class="col-md-4">
@@ -312,31 +348,88 @@
               }
             </div>
           </div>
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Recursos y promoción</h5>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label-dark">Banner promocional</label>
-              <input type="file" class="form-control form-control-dark" accept="image/*" (change)="onImagenSelected($event)" />
+              <div class="image-mode-tabs mb-2">
+                <button
+                  type="button"
+                  class="btn btn-dark-outline btn-sm"
+                  [class.active]="imagenModeCrear === 'archivo'"
+                  (click)="cambiarImagenModoCrear('archivo')"
+                >
+                  Subir archivo
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-dark-outline btn-sm"
+                  [class.active]="imagenModeCrear === 'url'"
+                  (click)="cambiarImagenModoCrear('url')"
+                >
+                  Enlace / URL
+                </button>
+              </div>
+              @if (imagenModeCrear === 'archivo') {
+                <div class="upload-dropzone" (drop)="onImagenDrop($event)" (dragover)="onImagenDragOver($event)">
+                  <input type="file" class="form-control form-control-dark" accept="image/*" (change)="onImagenSelected($event)" />
+                  <small class="text-muted">Arrastra y suelta la imagen aquí o usa el selector.</small>
+                </div>
+              } @else {
+                <input
+                  type="text"
+                  class="form-control form-control-dark"
+                  formControlName="imagenPromocionalUrl"
+                  placeholder="https://... (S3, Firebase, Drive, etc.)"
+                />
+              }
             </div>
             <div class="col-md-6">
               <label class="form-label-dark">Pensum oficial (PDF)</label>
               <input type="file" class="form-control form-control-dark" accept="application/pdf,.pdf" (change)="onPensumSelected($event)" />
             </div>
           </div>
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Equipo del evento</h5>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <app-staff-autocomplete tipoStaff="profesor" [seleccionados]="profesoresSeleccionados" (seleccionadosChange)="profesoresSeleccionados = $event" />
+              <app-staff-autocomplete
+                tipoStaff="profesor"
+                [maxSeleccionados]="1"
+                [tituloCustom]="'Profesor líder *'"
+                [placeholderCustom]="'Buscar profesor líder...'"
+                [hintCustom]="'Responsable académico principal del evento y cierre de actas.'"
+                [seleccionados]="profesorLiderSeleccionado"
+                (seleccionadosChange)="profesorLiderSeleccionado = $event"
+              />
+            </div>
+            <div class="col-md-6">
+              <app-staff-autocomplete
+                tipoStaff="profesor"
+                [tituloCustom]="'Profesores colaboradores (opcional)'"
+                [placeholderCustom]="'Buscar co-instructor...'"
+                [hintCustom]="'Docentes de apoyo para sesiones complementarias.'"
+                [seleccionados]="profesoresSeleccionados"
+                (seleccionadosChange)="profesoresSeleccionados = $event"
+              />
             </div>
             <div class="col-md-6">
               <app-staff-autocomplete tipoStaff="monitor" [seleccionados]="monitoresSeleccionados" (seleccionadosChange)="monitoresSeleccionados = $event" />
             </div>
           </div>
+          </section>
 
           @if (tipoCrearSig() === 'CURSO') {
             <div class="mini-form-card mini-form-curso">
               <h6 class="mini-form-title">Curso académico</h6>
-              <p class="mini-form-desc">Define los criterios de aprobación y asistencia para la certificación.</p>
+              <p class="mini-form-desc">Define los criterios de aprobación académica para la certificación.</p>
               <div class="row g-4">
-                <div class="col-md-4">
+                <div class="col-md-6">
                   <label class="form-label-dark">Nivel</label>
                   <select
                     class="form-select form-select-dark"
@@ -352,7 +445,7 @@
                     <div class="form-hint-subtle text-danger">Seleccione el nivel.</div>
                   }
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                   <label class="form-label-dark">Nota mínima *</label>
                   <input
                     type="number"
@@ -368,11 +461,6 @@
                   @if (campoMuestraError(createForm, 'notaMinimaAprobacion')) {
                     <div class="form-hint-subtle text-danger">Use una nota entre 0 y 5.</div>
                   }
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label-dark">Asistencia mínima (%) *</label>
-                  <input type="range" class="form-range" min="0" max="100" formControlName="porcentajeAsistenciaMinimo" />
-                  <span class="small text-muted">{{ createForm.get('porcentajeAsistenciaMinimo')?.value }}%</span>
                 </div>
               </div>
             </div>
@@ -447,9 +535,11 @@
             </div>
           }
 
+          <section class="form-section">
+            <h5 class="form-section__title">Fechas y ubicación</h5>
           <div class="row g-4 form-field-row">
             <div class="col-md-6">
-              <label class="form-label-dark">Fecha y hora inicio</label>
+              <label class="form-label-dark">Fecha y hora inicio *</label>
               <input
                 type="datetime-local"
                 class="form-control form-control-dark"
@@ -461,7 +551,7 @@
               }
             </div>
             <div class="col-md-6">
-              <label class="form-label-dark">Fecha y hora fin</label>
+              <label class="form-label-dark">Fecha y hora fin *</label>
               <input type="datetime-local" class="form-control form-control-dark" formControlName="fechaFin" />
             </div>
           </div>
@@ -505,16 +595,19 @@
               }
             </div>
           }
-          <div class="mb-3 border-top border-secondary border-opacity-25 pt-3 mt-2">
+          </section>
+
+          <section class="form-section form-section--fields">
+          <div class="mb-3 custom-fields-panel">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-              <span class="form-label-dark mb-0">Campos personalizados (inscripción)</span>
+              <span class="form-label-dark mb-0">Campos personalizados para la inscripción</span>
               <button type="button" class="btn btn-outline-light btn-sm" (click)="addCampoCrear()">+ Añadir campo</button>
             </div>
             <p class="form-hint-subtle small mb-2">
-              Opcional. Tipos URL e Imagen para enlaces y fotos. SELECT: JSON, p. ej. <code>["A","B"]</code>.
+              Permite solicitar datos adicionales a los participantes al momento de registrarse.
             </p>
             @for (campo of camposCrear; let i = $index; track i) {
-              <div class="rounded p-2 mb-2 bg-dark bg-opacity-25 border border-secondary border-opacity-25">
+              <div class="custom-field-card rounded p-2 mb-2 bg-dark bg-opacity-25 border border-secondary border-opacity-25">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-4">
                     <label class="form-label-dark small">Etiqueta</label>
@@ -522,7 +615,12 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label-dark small">Tipo</label>
-                    <select class="form-select form-select-dark form-select-sm" [(ngModel)]="campo.tipoDato" [ngModelOptions]="{ standalone: true }">
+                    <select
+                      class="form-select form-select-dark form-select-sm"
+                      [(ngModel)]="campo.tipoDato"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onTipoDatoCampoCrearChange(i)"
+                    >
                       @for (td of tiposDato; track td) {
                         <option [ngValue]="td">{{ etiquetaTipoCampo(td) }}</option>
                       }
@@ -535,18 +633,36 @@
                     </div>
                   </div>
                   <div class="col-md-2 text-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeCampoCrear(i)">Quitar</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeCampoCrear(i)">🗑 Eliminar</button>
                   </div>
                   @if (campo.tipoDato === 'SELECT') {
                     <div class="col-12">
-                      <label class="form-label-dark small">Opciones (JSON array)</label>
-                      <input class="form-control form-control-dark form-control-sm" [(ngModel)]="campo.opciones" [ngModelOptions]="{ standalone: true }" placeholder='["Opción 1","Opción 2"]' />
+                      <label class="form-label-dark small">Opciones de la lista</label>
+                      <div class="custom-field-options mb-2">
+                        @for (op of obtenerOpcionesCampo(campo); track op) {
+                          <span class="option-chip">
+                            {{ op }}
+                            <button type="button" class="chip-remove" (click)="eliminarOpcionCampoCrear(i, op)">×</button>
+                          </span>
+                        }
+                      </div>
+                      <div class="d-flex gap-2">
+                        <input
+                          class="form-control form-control-dark form-control-sm"
+                          [(ngModel)]="campoOpcionDraftCrear[i]"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keyup.enter)="agregarOpcionCampoCrear(i)"
+                          placeholder="Escribe una opción y presiona Enter"
+                        />
+                        <button type="button" class="btn btn-outline-light btn-sm" (click)="agregarOpcionCampoCrear(i)">+ Añadir opción</button>
+                      </div>
                     </div>
                   }
                 </div>
               </div>
             }
           </div>
+          </section>
           @if (formAlert && showCreateModal) {
             <div class="alert alert-warning py-2 px-3 mb-0">{{ formAlert }}</div>
           }
@@ -564,7 +680,7 @@
 
 @if (showEditModal) {
   <div class="modal-overlay" (click)="closeEditModal()">
-    <div class="modal-container modal-evento-lg glass-card" (click)="$event.stopPropagation()">
+    <div class="modal-container modal-evento-lg modal-evento-shell glass-card" (click)="$event.stopPropagation()">
       <div class="modal-header-custom">
         <h4>Editar evento</h4>
         <button type="button" class="modal-close" (click)="closeEditModal()">
@@ -575,9 +691,11 @@
         </button>
       </div>
       <div class="modal-body-custom">
-        <form class="evento-form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
+        <form class="evento-form evento-modal-form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
+          <section class="form-section">
+            <h5 class="form-section__title">Información general</h5>
           <div class="mb-3">
-            <label class="form-label-dark">Nombre</label>
+            <label class="form-label-dark">Nombre *</label>
             <input
               type="text"
               class="form-control form-control-dark"
@@ -617,10 +735,44 @@
               </select>
             </div>
           </div>
+          </section>
+
+          <section class="form-section form-section--cert mini-form-card mini-form-cert">
+            <h5 class="form-section__title form-section__title--cert">Certificación</h5>
+            <p class="mini-form-desc">
+              Porcentaje mínimo de asistencia confirmada para emitir el certificado (todos los tipos de evento).
+            </p>
+            <label class="form-label-dark" for="asistencia-min-edit">Asistencia mínima *</label>
+            <div class="asistencia-range-block">
+              <input
+                id="asistencia-min-edit"
+                type="range"
+                class="form-range form-range--cert"
+                min="1"
+                max="100"
+                formControlName="porcentajeAsistenciaMinimo"
+                [class.is-invalid]="campoMuestraError(editForm, 'porcentajeAsistenciaMinimo')"
+              />
+              <span class="asistencia-valor">{{ editForm.get('porcentajeAsistenciaMinimo')?.value }}%</span>
+            </div>
+            @if (campoMuestraError(editForm, 'porcentajeAsistenciaMinimo')) {
+              <div class="form-hint-subtle text-danger">Indique un valor entre 1 y 100.</div>
+            }
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Cupos y duración</h5>
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label-dark">Precio</label>
-              <input type="number" class="form-control form-control-dark" formControlName="precio" min="0" step="0.01" />
+              <label class="form-label-dark">Precio (COP) *</label>
+              <input
+                type="number"
+                class="form-control form-control-dark"
+                formControlName="precio"
+                min="0"
+                step="1"
+                placeholder="0 = gratuito"
+              />
               <small class="text-muted">{{ etiquetaPrecioEdit }}</small>
             </div>
             <div class="col-md-4">
@@ -632,6 +784,10 @@
               <input type="number" class="form-control form-control-dark" formControlName="intensidadHoraria" min="1" />
             </div>
           </div>
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Fechas y ubicación</h5>
           @if (requiereUbicacion(editForm.get('modalidad'))) {
             <div class="mb-3">
               <label class="form-label-dark">Ubicación *</label>
@@ -659,20 +815,78 @@
               }
             </div>
           }
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Recursos y promoción</h5>
+          <div class="mb-3">
+            <label class="form-label-dark">Banner promocional</label>
+            <div class="image-mode-tabs mb-2">
+              <button
+                type="button"
+                class="btn btn-dark-outline btn-sm"
+                [class.active]="imagenModeEdit === 'url'"
+                (click)="cambiarImagenModoEdit('url')"
+              >
+                Enlace / URL
+              </button>
+              <button
+                type="button"
+                class="btn btn-dark-outline btn-sm"
+                [class.active]="imagenModeEdit === 'archivo'"
+                (click)="cambiarImagenModoEdit('archivo')"
+              >
+                Mantener actual
+              </button>
+            </div>
+            @if (imagenModeEdit === 'url') {
+              <input
+                type="text"
+                class="form-control form-control-dark"
+                formControlName="imagenPromocionalUrl"
+                placeholder="https://... (S3, Firebase, Drive, etc.)"
+              />
+            } @else {
+              <small class="text-muted">Se conserva la imagen registrada actualmente.</small>
+            }
+          </div>
+          </section>
+
+          <section class="form-section">
+            <h5 class="form-section__title">Equipo del evento</h5>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <app-staff-autocomplete tipoStaff="profesor" [seleccionados]="profesoresSeleccionadosEdit" (seleccionadosChange)="profesoresSeleccionadosEdit = $event" />
+              <app-staff-autocomplete
+                tipoStaff="profesor"
+                [maxSeleccionados]="1"
+                [tituloCustom]="'Profesor líder *'"
+                [placeholderCustom]="'Buscar profesor líder...'"
+                [hintCustom]="'Responsable académico principal del evento y cierre de actas.'"
+                [seleccionados]="profesorLiderSeleccionadoEdit"
+                (seleccionadosChange)="profesorLiderSeleccionadoEdit = $event"
+              />
+            </div>
+            <div class="col-md-6">
+              <app-staff-autocomplete
+                tipoStaff="profesor"
+                [tituloCustom]="'Profesores colaboradores (opcional)'"
+                [placeholderCustom]="'Buscar co-instructor...'"
+                [hintCustom]="'Docentes de apoyo para sesiones complementarias.'"
+                [seleccionados]="profesoresSeleccionadosEdit"
+                (seleccionadosChange)="profesoresSeleccionadosEdit = $event"
+              />
             </div>
             <div class="col-md-6">
               <app-staff-autocomplete tipoStaff="monitor" [seleccionados]="monitoresSeleccionadosEdit" (seleccionadosChange)="monitoresSeleccionadosEdit = $event" />
             </div>
           </div>
+          </section>
 
           @if (tipoEditSig() === 'CURSO') {
             <div class="mini-form-card mini-form-curso">
               <h6 class="mini-form-title">Curso académico</h6>
               <div class="row g-4">
-                <div class="col-md-4">
+                <div class="col-md-6">
                   <label class="form-label-dark">Nivel</label>
                   <select class="form-select form-select-dark" formControlName="nivelAcademico">
                     <option [ngValue]="null">Seleccione…</option>
@@ -681,14 +895,9 @@
                     }
                   </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                   <label class="form-label-dark">Nota mínima *</label>
                   <input type="number" step="0.1" min="0" max="5" class="form-control form-control-dark" formControlName="notaMinimaAprobacion" placeholder="Ej: 3.5" />
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label-dark">Asistencia mínima (%) *</label>
-                  <input type="range" class="form-range" min="0" max="100" formControlName="porcentajeAsistenciaMinimo" />
-                  <span class="small text-muted">{{ createForm.get('porcentajeAsistenciaMinimo')?.value ?? editForm.get('porcentajeAsistenciaMinimo')?.value }}%</span>
                 </div>
               </div>
             </div>
@@ -760,33 +969,39 @@
             </div>
           }
 
+          <section class="form-section">
+            <h5 class="form-section__title">Programación</h5>
           <div class="row g-4 form-field-row">
             <div class="col-md-6">
-              <label class="form-label-dark">Fecha y hora inicio</label>
+              <label class="form-label-dark">Fecha y hora inicio *</label>
               <input type="datetime-local" class="form-control form-control-dark" formControlName="fechaInicio" />
             </div>
             <div class="col-md-6">
-              <label class="form-label-dark">Fecha y hora fin</label>
+              <label class="form-label-dark">Fecha y hora fin *</label>
               <input type="datetime-local" class="form-control form-control-dark" formControlName="fechaFin" />
             </div>
           </div>
           @if (editForm.touched && editForm.hasError('finAntesInicio')) {
             <div class="form-hint-subtle text-danger mb-3">La fecha de fin debe ser posterior o igual a la de inicio.</div>
           }
-          <div class="mb-3 form-check">
+          </section>
+
+          <div class="mb-3 form-check form-check--evento">
             <input type="checkbox" class="form-check-input" id="evActivo" formControlName="estado" />
             <label class="form-check-label text-white-50" for="evActivo">Evento activo</label>
           </div>
-          <div class="mb-3 border-top border-secondary border-opacity-25 pt-3 mt-2">
+          <section class="form-section form-section--fields">
+          <div class="mb-3 custom-fields-panel">
+            <h5 class="form-section__title">Campos de inscripción</h5>
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-              <span class="form-label-dark mb-0">Campos personalizados</span>
+              <span class="form-label-dark mb-0 visually-hidden">Campos personalizados</span>
               <button type="button" class="btn btn-outline-light btn-sm" (click)="addCampoEdit()">+ Añadir campo</button>
             </div>
             <p class="form-hint-subtle small mb-2">
               Si el evento ya tiene inscripciones, el servidor conservará los campos guardados aunque edite esta lista.
             </p>
             @for (campo of camposEdit; let i = $index; track i) {
-              <div class="rounded p-2 mb-2 bg-dark bg-opacity-25 border border-secondary border-opacity-25">
+              <div class="custom-field-card rounded p-2 mb-2 bg-dark bg-opacity-25 border border-secondary border-opacity-25">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-4">
                     <label class="form-label-dark small">Etiqueta</label>
@@ -794,7 +1009,12 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label-dark small">Tipo</label>
-                    <select class="form-select form-select-dark form-select-sm" [(ngModel)]="campo.tipoDato" [ngModelOptions]="{ standalone: true }">
+                    <select
+                      class="form-select form-select-dark form-select-sm"
+                      [(ngModel)]="campo.tipoDato"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onTipoDatoCampoEditChange(i)"
+                    >
                       @for (td of tiposDato; track td) {
                         <option [ngValue]="td">{{ etiquetaTipoCampo(td) }}</option>
                       }
@@ -807,18 +1027,36 @@
                     </div>
                   </div>
                   <div class="col-md-2 text-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeCampoEdit(i)">Quitar</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeCampoEdit(i)">🗑 Eliminar</button>
                   </div>
                   @if (campo.tipoDato === 'SELECT') {
                     <div class="col-12">
-                      <label class="form-label-dark small">Opciones (JSON array)</label>
-                      <input class="form-control form-control-dark form-control-sm" [(ngModel)]="campo.opciones" [ngModelOptions]="{ standalone: true }" />
+                      <label class="form-label-dark small">Opciones de la lista</label>
+                      <div class="custom-field-options mb-2">
+                        @for (op of obtenerOpcionesCampo(campo); track op) {
+                          <span class="option-chip">
+                            {{ op }}
+                            <button type="button" class="chip-remove" (click)="eliminarOpcionCampoEdit(i, op)">×</button>
+                          </span>
+                        }
+                      </div>
+                      <div class="d-flex gap-2">
+                        <input
+                          class="form-control form-control-dark form-control-sm"
+                          [(ngModel)]="campoOpcionDraftEdit[i]"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keyup.enter)="agregarOpcionCampoEdit(i)"
+                          placeholder="Escribe una opción y presiona Enter"
+                        />
+                        <button type="button" class="btn btn-outline-light btn-sm" (click)="agregarOpcionCampoEdit(i)">+ Añadir opción</button>
+                      </div>
                     </div>
                   }
                 </div>
               </div>
             }
           </div>
+          </section>
           @if (formAlert && showEditModal) {
             <div class="alert alert-warning py-2 px-3 mb-0">{{ formAlert }}</div>
           }

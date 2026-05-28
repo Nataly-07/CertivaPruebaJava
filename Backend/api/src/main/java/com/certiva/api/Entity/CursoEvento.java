@@ -24,7 +24,4 @@ public class CursoEvento extends Evento {
 
     @Column(name = "nota_minima_aprobacion")
     private Double notaMinimaAprobacion;
-
-    @Column(name = "porcentaje_asistencia_minimo")
-    private Integer porcentajeAsistenciaMinimo;
 }

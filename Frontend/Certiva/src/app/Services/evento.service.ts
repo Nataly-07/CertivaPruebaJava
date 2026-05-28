@@ -149,6 +149,11 @@ export class EventoService {
     return this.http.get<EventoPublicoDTO>(`${base}/public/eventos/difusion/${encodeURIComponent(codigo)}`);
   }
 
+  obtenerPublicoPorId(idEvento: number): Observable<EventoPublicoDTO> {
+    const base = environment.API_URL.replace(/\/$/, '');
+    return this.http.get<EventoPublicoDTO>(`${base}/public/eventos/${idEvento}`);
+  }
+
   obtenerPanelProfesor(): Observable<ProfesorPanelDTO> {
     return this.http.get<ProfesorPanelDTO>(`${this.baseUrl}/mi-panel`);
   }

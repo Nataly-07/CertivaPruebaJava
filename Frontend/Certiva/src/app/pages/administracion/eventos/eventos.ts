@@ -43,6 +43,7 @@ import {
 import { etiquetaEstadoEvento, EstadoOperativoEvento, ETIQUETAS_ESTADO_EVENTO } from '../../../constants/estado-evento';
 import { TARJETAS_TIPO_EVENTO, TarjetaTipoEventoConfig } from '../../../constants/evento-tipo-cards';
 import { URL_MAX_LENGTH, urlFlexibleValidator } from '../../../validators/url.validators';
+import { etiquetaPrecioFormulario } from '../../../utils/currency.util';
 import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-sidebar.component';
 
 @Component({
@@ -85,12 +86,18 @@ export class Eventos implements OnInit {
   camposCrear: CrearCampoFormularioDTO[] = [];
   camposEdit: CampoFormularioDTO[] = [];
   profesoresSeleccionados: UsuarioStaffDTO[] = [];
+  profesorLiderSeleccionado: UsuarioStaffDTO[] = [];
   monitoresSeleccionados: UsuarioStaffDTO[] = [];
   profesoresSeleccionadosEdit: UsuarioStaffDTO[] = [];
+  profesorLiderSeleccionadoEdit: UsuarioStaffDTO[] = [];
   monitoresSeleccionadosEdit: UsuarioStaffDTO[] = [];
   stackTagsCrear: string[] = [];
   stackTagsEdit: string[] = [];
   imagenArchivo: File | null = null;
+  imagenModeCrear: 'archivo' | 'url' = 'archivo';
+  imagenModeEdit: 'archivo' | 'url' = 'archivo';
+  imagenUrlCrear = '';
+  imagenUrlEdit = '';
   pensumArchivo: File | null = null;
   eventoRecienCreado: EventoDTO | null = null;
   showQrDifusionModal = false;
@@ -136,6 +143,8 @@ export class Eventos implements OnInit {
 
   readonly etiquetaTipoCampo = etiquetaTipoCampo;
   readonly urlMaxLength = URL_MAX_LENGTH;
+  campoOpcionDraftCrear: Record<number, string> = {};
+  campoOpcionDraftEdit: Record<number, string> = {};
 
   constructor(
     public authService: AuthService,
@@ -177,13 +186,11 @@ export class Eventos implements OnInit {
   }
 
   get etiquetaPrecioCreate(): string {
-    const p = this.createForm.get('precio')?.value;
-    return p === 0 || p === '0' ? 'Gratuito' : `Precio: $${p}`;
+    return etiquetaPrecioFormulario(this.createForm.get('precio')?.value);
   }
 
   get etiquetaPrecioEdit(): string {
-    const p = this.editForm.get('precio')?.value;
-    return p === 0 || p === '0' ? 'Gratuito' : `Precio: $${p}`;
+    return etiquetaPrecioFormulario(this.editForm.get('precio')?.value);
   }
 
   onStackCrearChange(tags: string[]): void {
@@ -348,9 +355,13 @@ export class Eventos implements OnInit {
   openCreateModal(): void {
     this.camposCrear = [];
     this.profesoresSeleccionados = [];
+    this.profesorLiderSeleccionado = [];
     this.monitoresSeleccionados = [];
+    this.campoOpcionDraftCrear = {};
     this.stackTagsCrear = [];
     this.imagenArchivo = null;
+    this.imagenModeCrear = 'archivo';
+    this.imagenUrlCrear = '';
     this.pensumArchivo = null;
     this.createForm.reset({
       nombreEvento: '',
@@ -366,6 +377,7 @@ export class Eventos implements OnInit {
       precio: 0,
       textoDiploma: '',
       firmaDigitalProfesor: '',
+      imagenPromocionalUrl: '',
       nivelAcademico: null,
       notaMinimaAprobacion: null,
       porcentajeAsistenciaMinimo: 80,
@@ -391,6 +403,37 @@ export class Eventos implements OnInit {
     this.imagenArchivo = input.files?.[0] ?? null;
   }
 
+  onImagenDrop(ev: DragEvent): void {
+    ev.preventDefault();
+    const file = ev.dataTransfer?.files?.[0] ?? null;
+    if (!file) {
+      return;
+    }
+    this.imagenArchivo = file;
+  }
+
+  onImagenDragOver(ev: DragEvent): void {
+    ev.preventDefault();
+  }
+
+  cambiarImagenModoCrear(modo: 'archivo' | 'url'): void {
+    this.imagenModeCrear = modo;
+    if (modo === 'url') {
+      this.imagenArchivo = null;
+    } else {
+      this.imagenUrlCrear = '';
+      this.createForm.patchValue({ imagenPromocionalUrl: '' }, { emitEvent: false });
+    }
+  }
+
+  cambiarImagenModoEdit(modo: 'archivo' | 'url'): void {
+    this.imagenModeEdit = modo;
+    if (modo === 'archivo') {
+      this.imagenUrlEdit = '';
+      this.editForm.patchValue({ imagenPromocionalUrl: '' }, { emitEvent: false });
+    }
+  }
+
   onPensumSelected(ev: Event): void {
     const input = ev.target as HTMLInputElement;
     this.pensumArchivo = input.files?.[0] ?? null;
@@ -407,9 +450,17 @@ export class Eventos implements OnInit {
       next: full => {
         this.editing = full;
         this.camposEdit = (full.camposPersonalizados ?? []).map(c => ({ ...c }));
+        this.campoOpcionDraftEdit = {};
         this.profesoresSeleccionadosEdit = [...(full.profesoresColaboradores ?? [])];
+        const idLider = full.idProfesorLider ?? full.idUsuarioCreador ?? null;
+        const liderObj = full.profesorLider
+          ?? (full.profesoresColaboradores ?? []).find(p => p.idUsuario === idLider)
+          ?? null;
+        this.profesorLiderSeleccionadoEdit = liderObj ? [liderObj] : [];
         this.monitoresSeleccionadosEdit = [...(full.monitoresAsignados ?? [])];
         this.stackTagsEdit = this.parseStackJson(full.detalleFeria?.stackTecnologico);
+        this.imagenUrlEdit = full.imagenPromocionalUrl ?? full.rutaImagenPromocional ?? '';
+        this.imagenModeEdit = this.imagenUrlEdit ? 'url' : 'archivo';
         this.editForm.patchValue({
           nombreEvento: full.nombreEvento,
           descripcion: full.descripcion ?? '',
@@ -424,9 +475,11 @@ export class Eventos implements OnInit {
           precio: full.precio ?? 0,
           textoDiploma: full.textoDiploma ?? '',
           firmaDigitalProfesor: full.firmaDigitalProfesor ?? '',
+          imagenPromocionalUrl: this.imagenUrlEdit,
           nivelAcademico: full.detalleCurso?.nivelAcademico ?? null,
           notaMinimaAprobacion: full.detalleCurso?.notaMinimaAprobacion ?? null,
-          porcentajeAsistenciaMinimo: full.detalleCurso?.porcentajeAsistenciaMinimo ?? 80,
+          porcentajeAsistenciaMinimo:
+            full.porcentajeAsistenciaMinimo ?? full.detalleCurso?.porcentajeAsistenciaMinimo ?? 80,
           retoTecnicoCentral: full.detalleHackathon?.retoTecnicoCentral ?? '',
           minIntegrantes: full.detalleHackathon?.minIntegrantes ?? 2,
           maxIntegrantes: full.detalleHackathon?.maxIntegrantes ?? 5,
@@ -450,6 +503,9 @@ export class Eventos implements OnInit {
     this.showEditModal = false;
     this.editing = null;
     this.camposEdit = [];
+    this.profesorLiderSeleccionadoEdit = [];
+    this.imagenUrlEdit = '';
+    this.imagenModeEdit = 'archivo';
     this.formAlert = null;
     this.guardando = false;
   }
@@ -457,7 +513,11 @@ export class Eventos implements OnInit {
   submitCreate(): void {
     this.formAlert = null;
     this.intentoEnvioForm = true;
-    const alertaStaff = this.validarStaffSinCruce();
+    const alertaStaff = this.validarReglasStaff(
+      this.profesorLiderSeleccionado,
+      this.profesoresSeleccionados,
+      this.monitoresSeleccionados,
+    );
     if (alertaStaff) {
       this.formAlert = alertaStaff;
       return;
@@ -502,6 +562,11 @@ export class Eventos implements OnInit {
       raw.ubicacion,
       raw.enlaceVirtual,
     );
+    const asistencia = Math.trunc(Number(raw.porcentajeAsistenciaMinimo));
+    if (!Number.isFinite(asistencia) || asistencia < 1 || asistencia > 100) {
+      this.formAlert = 'Indique la asistencia mínima (1–100 %) requerida para certificar.';
+      return null;
+    }
     const dto: CrearEventoDTO = {
       nombreEvento: raw.nombreEvento,
       descripcion: raw.descripcion || null,
@@ -513,9 +578,15 @@ export class Eventos implements OnInit {
       enlaceVirtual,
       aforoMaximo: Math.max(1, Math.trunc(Number(raw.aforoMaximo) || 0)),
       intensidadHoraria: Math.max(1, Math.trunc(Number(raw.intensidadHoraria) || 0)),
+      porcentajeAsistenciaMinimo: asistencia,
       precio: Number(raw.precio) || 0,
       textoDiploma: raw.textoDiploma || null,
       firmaDigitalProfesor: raw.firmaDigitalProfesor || null,
+      idProfesorLider: this.idProfesorLiderDesdeSeleccion(this.profesorLiderSeleccionado)!,
+      imagenPromocionalUrl:
+        this.imagenModeCrear === 'url'
+          ? (raw.imagenPromocionalUrl?.trim() || null)
+          : null,
       idsProfesoresColaboradores: this.idsStaffUnicos(this.profesoresSeleccionados),
       idsMonitoresAsignados: this.idsStaffUnicos(this.monitoresSeleccionados),
       camposPersonalizados: this.camposCrearValidos(),
@@ -523,10 +594,8 @@ export class Eventos implements OnInit {
     switch (tipo) {
       case 'CURSO': {
         const nota = Number(raw.notaMinimaAprobacion);
-        const asistencia = Math.trunc(Number(raw.porcentajeAsistenciaMinimo));
-        if (!raw.nivelAcademico || !Number.isFinite(nota) || !Number.isFinite(asistencia)) {
-          this.formAlert =
-            'Complete nivel académico, nota mínima y asistencia mínima del curso antes de guardar.';
+        if (!raw.nivelAcademico || !Number.isFinite(nota)) {
+          this.formAlert = 'Complete nivel académico y nota mínima del curso antes de guardar.';
           return null;
         }
         dto.detalleCurso = {
@@ -564,6 +633,15 @@ export class Eventos implements OnInit {
     if (!this.editing) {
       return;
     }
+    const alertaStaff = this.validarReglasStaff(
+      this.profesorLiderSeleccionadoEdit,
+      this.profesoresSeleccionadosEdit,
+      this.monitoresSeleccionadosEdit,
+    );
+    if (alertaStaff) {
+      this.formAlert = alertaStaff;
+      return;
+    }
     this.sincronizarValidadoresAntesDeEnviar(this.editForm);
     if (this.editForm.invalid) {
       this.editForm.markAllAsTouched();
@@ -592,11 +670,17 @@ export class Eventos implements OnInit {
       precio: Number(raw.precio) || 0,
       textoDiploma: raw.textoDiploma || null,
       firmaDigitalProfesor: raw.firmaDigitalProfesor || null,
+      idProfesorLider: this.idProfesorLiderDesdeSeleccion(this.profesorLiderSeleccionadoEdit),
+      imagenPromocionalUrl:
+        this.imagenModeEdit === 'url'
+          ? (raw.imagenPromocionalUrl?.trim() || null)
+          : null,
       estado: raw.estado,
       idUsuarioCreador: this.editing.idUsuarioCreador,
       idsProfesoresColaboradores: this.idsStaffUnicos(this.profesoresSeleccionadosEdit),
       idsMonitoresAsignados: this.idsStaffUnicos(this.monitoresSeleccionadosEdit),
       camposPersonalizados: this.camposEditValidos(),
+      porcentajeAsistenciaMinimo: Number(raw.porcentajeAsistenciaMinimo),
     };
     if (tipo === 'CURSO') {
       dto.detalleCurso = {
@@ -796,9 +880,10 @@ export class Eventos implements OnInit {
         precio: [0, [Validators.required, Validators.min(0)]],
         textoDiploma: [''],
         firmaDigitalProfesor: [''],
+        imagenPromocionalUrl: ['', [Validators.maxLength(10000), urlFlexibleValidator()]],
         nivelAcademico: [null as NivelAcademico | null],
         notaMinimaAprobacion: [null as number | null],
-        porcentajeAsistenciaMinimo: [80, [Validators.min(0), Validators.max(100)]],
+        porcentajeAsistenciaMinimo: [80, [Validators.required, Validators.min(1), Validators.max(100)]],
         retoTecnicoCentral: [''],
         minIntegrantes: [2],
         maxIntegrantes: [5],
@@ -814,7 +899,7 @@ export class Eventos implements OnInit {
   }
 
   private readonly camposPorTipo: Record<TipoEventoEnum, string[]> = {
-    CURSO: ['nivelAcademico', 'notaMinimaAprobacion', 'porcentajeAsistenciaMinimo'],
+    CURSO: ['nivelAcademico', 'notaMinimaAprobacion'],
     HACKATHON: ['retoTecnicoCentral', 'minIntegrantes', 'maxIntegrantes'],
     FERIA: ['categoriaExhibicion', 'stackTecnologico', 'criteriosEvaluacion'],
     TALLER: ['materialGuia'],
@@ -853,14 +938,15 @@ export class Eventos implements OnInit {
       ctrl.updateValueAndValidity({ emitEvent: false });
     }
 
+    form
+      .get('porcentajeAsistenciaMinimo')
+      ?.setValidators([Validators.required, Validators.min(1), Validators.max(100)]);
+
     if (tipo === 'CURSO') {
       form.get('nivelAcademico')?.setValidators(Validators.required);
       form
         .get('notaMinimaAprobacion')
         ?.setValidators([Validators.required, Validators.min(0), Validators.max(5)]);
-      form
-        .get('porcentajeAsistenciaMinimo')
-        ?.setValidators([Validators.required, Validators.min(0), Validators.max(100)]);
     } else if (tipo === 'HACKATHON') {
       form.get('retoTecnicoCentral')?.setValidators([Validators.required, Validators.maxLength(2000)]);
       form.get('minIntegrantes')?.setValidators([Validators.required, this.numeroRequeridoMin(1)]);
@@ -1015,6 +1101,7 @@ export class Eventos implements OnInit {
 
   removeCampoCrear(i: number): void {
     this.camposCrear.splice(i, 1);
+    delete this.campoOpcionDraftCrear[i];
   }
 
   addCampoEdit(): void {
@@ -1032,6 +1119,75 @@ export class Eventos implements OnInit {
 
   removeCampoEdit(i: number): void {
     this.camposEdit.splice(i, 1);
+    delete this.campoOpcionDraftEdit[i];
+  }
+
+  onTipoDatoCampoCrearChange(i: number): void {
+    const campo = this.camposCrear[i];
+    if (!campo || campo.tipoDato === 'SELECT') return;
+    campo.opciones = null;
+    this.campoOpcionDraftCrear[i] = '';
+  }
+
+  onTipoDatoCampoEditChange(i: number): void {
+    const campo = this.camposEdit[i];
+    if (!campo || campo.tipoDato === 'SELECT') return;
+    campo.opciones = null;
+    this.campoOpcionDraftEdit[i] = '';
+  }
+
+  agregarOpcionCampoCrear(i: number): void {
+    const draft = (this.campoOpcionDraftCrear[i] ?? '').trim();
+    if (!draft) return;
+    const campo = this.camposCrear[i];
+    if (!campo || campo.tipoDato !== 'SELECT') return;
+    const opciones = this.obtenerOpcionesCampo(campo);
+    if (!opciones.includes(draft)) {
+      opciones.push(draft);
+      campo.opciones = JSON.stringify(opciones);
+    }
+    this.campoOpcionDraftCrear[i] = '';
+  }
+
+  agregarOpcionCampoEdit(i: number): void {
+    const draft = (this.campoOpcionDraftEdit[i] ?? '').trim();
+    if (!draft) return;
+    const campo = this.camposEdit[i];
+    if (!campo || campo.tipoDato !== 'SELECT') return;
+    const opciones = this.obtenerOpcionesCampo(campo);
+    if (!opciones.includes(draft)) {
+      opciones.push(draft);
+      campo.opciones = JSON.stringify(opciones);
+    }
+    this.campoOpcionDraftEdit[i] = '';
+  }
+
+  eliminarOpcionCampoCrear(i: number, opcion: string): void {
+    const campo = this.camposCrear[i];
+    if (!campo) return;
+    const opciones = this.obtenerOpcionesCampo(campo).filter(o => o !== opcion);
+    campo.opciones = opciones.length ? JSON.stringify(opciones) : null;
+  }
+
+  eliminarOpcionCampoEdit(i: number, opcion: string): void {
+    const campo = this.camposEdit[i];
+    if (!campo) return;
+    const opciones = this.obtenerOpcionesCampo(campo).filter(o => o !== opcion);
+    campo.opciones = opciones.length ? JSON.stringify(opciones) : null;
+  }
+
+  obtenerOpcionesCampo(campo: { opciones?: string | null }): string[] {
+    const raw = campo.opciones?.trim();
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw) as unknown;
+      if (Array.isArray(arr)) {
+        return arr.map(v => String(v).trim()).filter(Boolean);
+      }
+    } catch {
+      return raw.split(',').map(v => v.trim()).filter(Boolean);
+    }
+    return [];
   }
 
   private camposCrearValidos(): CrearCampoFormularioDTO[] {
@@ -1041,7 +1197,7 @@ export class Eventos implements OnInit {
         etiqueta: c.etiqueta.trim(),
         tipoDato: c.tipoDato,
         esObligatorio: !!c.esObligatorio,
-        opciones: c.tipoDato === 'SELECT' ? (c.opciones?.trim() || null) : null,
+        opciones: c.tipoDato === 'SELECT' ? this.serializarOpcionesCampo(c) : null,
       }));
   }
 
@@ -1086,13 +1242,29 @@ export class Eventos implements OnInit {
     return [...new Set(ids)];
   }
 
-  private validarStaffSinCruce(): string | null {
-    const prof = new Set(this.idsStaffUnicos(this.profesoresSeleccionados));
-    const mon = this.idsStaffUnicos(this.monitoresSeleccionados);
+  private validarReglasStaff(
+    liderSel: UsuarioStaffDTO[],
+    profesoresSel: UsuarioStaffDTO[],
+    monitoresSel: UsuarioStaffDTO[],
+  ): string | null {
+    const lider = this.idProfesorLiderDesdeSeleccion(liderSel);
+    if (!lider) {
+      return 'Debe seleccionar un profesor líder responsable del evento.';
+    }
+    const prof = new Set(this.idsStaffUnicos(profesoresSel));
+    const mon = this.idsStaffUnicos(monitoresSel);
     if (mon.some(id => prof.has(id))) {
       return 'Un mismo usuario no puede ser profesor colaborador y monitor a la vez.';
     }
+    if (mon.includes(lider)) {
+      return 'El profesor líder no puede estar asignado también como monitor.';
+    }
     return null;
+  }
+
+  private idProfesorLiderDesdeSeleccion(seleccion: UsuarioStaffDTO[]): number | null {
+    const id = seleccion?.[0]?.idUsuario;
+    return id != null && id > 0 ? id : null;
   }
 
   private mensajeErrorHttp(err: { error?: { mensaje?: string; detalles?: string[] } }, fallback: string): string {
@@ -1172,7 +1344,12 @@ export class Eventos implements OnInit {
       .map(c => ({
         ...c,
         etiqueta: c.etiqueta.trim(),
-        opciones: c.tipoDato === 'SELECT' ? (c.opciones?.trim() || null) : null,
+        opciones: c.tipoDato === 'SELECT' ? this.serializarOpcionesCampo(c) : null,
       }));
+  }
+
+  private serializarOpcionesCampo(campo: { opciones?: string | null }): string | null {
+    const opciones = this.obtenerOpcionesCampo(campo);
+    return opciones.length ? JSON.stringify(opciones) : null;
   }
 }

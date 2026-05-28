@@ -8,7 +8,11 @@
     (input)="onBuscar()"
     [placeholder]="placeholder"
     autocomplete="off"
+    [disabled]="alcanzadoMaximo"
   />
+  @if (alcanzadoMaximo) {
+    <small class="text-muted">Límite de selección alcanzado.</small>
+  }
   @if (cargando) {
     <small class="text-muted">Buscando…</small>
   }

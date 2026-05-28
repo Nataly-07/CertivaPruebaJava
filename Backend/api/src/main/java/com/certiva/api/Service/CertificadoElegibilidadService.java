@@ -1,5 +1,7 @@
 package com.certiva.api.Service;
 
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 
 import com.certiva.api.Entity.CursoEvento;
@@ -8,7 +10,9 @@ import com.certiva.api.Entity.Inscripcion;
 import com.certiva.api.Entity.ResultadoEvaluacion;
 import com.certiva.api.Exception.OperacionNoPermitidaException;
 import com.certiva.api.Repository.ResultadoEvaluacionRepository;
+import com.certiva.api.Util.EventoAsistenciaHelper;
 import com.certiva.api.Util.InscripcionEstadoHelper;
+import com.certiva.api.Util.ProfesorAsistenciaHelper;
 import com.certiva.api.enums.TipoEventoEnum;
 
 import lombok.RequiredArgsConstructor;
@@ -31,12 +35,18 @@ public class CertificadoElegibilidadService {
             throw new OperacionNoPermitidaException("La asistencia debe estar confirmada para certificar.");
         }
 
-        if (evento.getTipoEvento() == TipoEventoEnum.CURSO && evento instanceof CursoEvento curso) {
-            validarCurso(inscripcion, curso);
-            return;
+        int minPct = EventoAsistenciaHelper.resolverPorcentajeMinimo(evento);
+        int actualPct = ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(
+                inscripcion, evento, LocalDateTime.now());
+        if (actualPct < minPct) {
+            throw new OperacionNoPermitidaException(
+                    "Certificado pendiente: se requiere al menos " + minPct
+                            + "% de asistencia (registrado: " + actualPct + "%).");
         }
 
-        // Hackathon, feria, taller y otros: asistencia confirmada es suficiente.
+        if (evento.getTipoEvento() == TipoEventoEnum.CURSO && evento instanceof CursoEvento curso) {
+            validarNotaCurso(inscripcion, curso);
+        }
     }
 
     public boolean puedeEmitirCertificado(Inscripcion inscripcion) {
@@ -57,7 +67,7 @@ public class CertificadoElegibilidadService {
         }
     }
 
-    private void validarCurso(Inscripcion inscripcion, CursoEvento curso) {
+    private void validarNotaCurso(Inscripcion inscripcion, CursoEvento curso) {
         ResultadoEvaluacion resultado = resultadoEvaluacionRepository
                 .findFirstByInscripcion_IdInscripcionOrderByIdDesc(inscripcion.getIdInscripcion())
                 .orElseThrow(() -> new OperacionNoPermitidaException(
@@ -73,15 +83,5 @@ public class CertificadoElegibilidadService {
             throw new OperacionNoPermitidaException(
                     "Certificado no emitido: la nota " + nota + " no alcanza el mínimo " + minima + ".");
         }
-
-        Integer pctMin = curso.getPorcentajeAsistenciaMinimo();
-        if (pctMin != null && pctMin > 0 && pctMin <= 100) {
-            // Un check-in QR confirmado equivale al cumplimiento de asistencia en eventos de sesión única.
-            return;
-        }
-    }
-
-    private static String norm(String s) {
-        return s == null ? "" : s.trim();
     }
 }

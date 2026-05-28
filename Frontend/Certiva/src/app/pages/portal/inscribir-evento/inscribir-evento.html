@@ -1,0 +1,140 @@
+<div class="portal-wrap inscripcion-page">
+  <div class="portal-inner glass-card inscripcion-card">
+    @if (!auth.isLoggedIn()) {
+      <section class="login-prompt" aria-labelledby="titulo-login">
+        <h1 id="titulo-login" class="page-title">Inscripción al evento</h1>
+        <p class="lead-text">
+          Para inscribirte necesitas una cuenta en Certiva. Inicia sesión y volverás automáticamente a este evento.
+        </p>
+        <div class="login-actions">
+          <button type="button" class="btn btn-gradient" (click)="irALogin()">Iniciar sesión</button>
+          <a routerLink="/registro" class="btn btn-dark-outline">Crear cuenta</a>
+        </div>
+      </section>
+    } @else if (loading) {
+      <p class="state-loading" role="status">Cargando evento…</p>
+    } @else if (evento) {
+      <header class="inscripcion-header">
+        <a routerLink="/portal/eventos" class="back-link">← Eventos disponibles</a>
+
+        @if (errorMsg) {
+          <div class="alert alert-warning py-2 px-3" role="alert">{{ errorMsg }}</div>
+        }
+
+        <h1 class="page-title">{{ evento.nombreEvento }}</h1>
+
+        <div class="evento-meta">
+          <div class="meta-item">
+            <span class="meta-label">Inicio</span>
+            <span class="meta-value">{{ evento.fechaInicio | date: 'medium' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Fin</span>
+            <span class="meta-value">{{ evento.fechaFin | date: 'medium' }}</span>
+          </div>
+          @if (evento.modalidad) {
+            <div class="meta-item">
+              <span class="meta-label">Modalidad</span>
+              <span class="meta-value">{{ etiquetaModalidad(evento.modalidad) }}</span>
+            </div>
+          }
+        </div>
+
+        @if (porcentajeAsistenciaMinimo != null) {
+          <div class="cert-requisito" role="note">
+            <strong>Certificado:</strong>
+            para obtenerlo deberás alcanzar al menos
+            <strong>{{ porcentajeAsistenciaMinimo }}%</strong> de asistencia confirmada durante el evento.
+          </div>
+        }
+
+        @if (!hayCupo) {
+          <div class="alert alert-danger py-2 px-3" role="alert">No hay cupo disponible para este evento.</div>
+        }
+      </header>
+
+      <div class="inscripcion-grid">
+        <section class="panel panel-usuario" aria-labelledby="titulo-usuario">
+          <h2 id="titulo-usuario" class="panel-title">
+            <span class="step-badge" aria-hidden="true">1</span>
+            Tus datos
+          </h2>
+          <p class="panel-desc">Estos datos provienen de tu perfil en Certiva.</p>
+          <dl class="datos-lista">
+            <div class="datos-fila">
+              <dt>Nombre</dt>
+              <dd>{{ nombreCompleto }}</dd>
+            </div>
+            <div class="datos-fila">
+              <dt>Correo</dt>
+              <dd>{{ correoUsuario }}</dd>
+            </div>
+          </dl>
+          @if (faltaTelefono) {
+            <div class="telefono-block">
+              <label class="field-label" for="telefono-contacto">Teléfono de contacto *</label>
+              <input
+                id="telefono-contacto"
+                type="tel"
+                class="form-control form-control-dark"
+                [formControl]="telefonoCtrl"
+                placeholder="Ej. 3001234567"
+              />
+              <button
+                type="button"
+                class="btn btn-dark-outline btn-sm mt-2"
+                [disabled]="telefonoCtrl.invalid || guardandoTelefono"
+                (click)="guardarTelefono()"
+              >
+                Guardar teléfono
+              </button>
+            </div>
+          }
+        </section>
+
+        <section class="panel panel-formulario" aria-labelledby="titulo-formulario">
+          <h2 id="titulo-formulario" class="panel-title">
+            <span class="step-badge step-badge--form" aria-hidden="true">2</span>
+            Información del evento
+          </h2>
+          <p class="panel-desc">Completa los campos que solicita el organizador. Los marcados con * son obligatorios.</p>
+          <app-dynamic-event-fields [campos]="campos" layout="inscripcion" #dynFields />
+        </section>
+      </div>
+
+      <footer class="inscripcion-footer">
+        <button
+          type="button"
+          class="btn btn-gradient btn-lg"
+          [disabled]="!hayCupo || submitting || faltaTelefono"
+          (click)="enviar()"
+        >
+          @if (submitting) {
+            Enviando inscripción…
+          } @else {
+            Confirmar inscripción
+          }
+        </button>
+      </footer>
+
+      @if (exitoMsg) {
+        <div class="alert alert-success mt-4 py-2 px-3" role="status">{{ exitoMsg }}</div>
+      }
+      @if (tokenQrRegistro) {
+        <section class="qr-inscripcion mt-4" aria-labelledby="titulo-qr">
+          <h3 id="titulo-qr" class="panel-title">Tu pase de entrada</h3>
+          <p class="panel-desc">
+            Guárdalo en tu celular y preséntalo en la entrada. El personal lo escaneará para registrar tu asistencia.
+          </p>
+          <app-qr-code-display
+            [data]="tokenQrRegistro"
+            [size]="200"
+            caption="Pase de entrada"
+            [showUrl]="true"
+          />
+          <a routerLink="/portal/mis-eventos" class="btn btn-dark-outline btn-sm mt-3">Ver en Mis eventos</a>
+        </section>
+      }
+    }
+  </div>
+</div>

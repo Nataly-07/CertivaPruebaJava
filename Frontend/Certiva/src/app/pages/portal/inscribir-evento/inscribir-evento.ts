@@ -6,7 +6,7 @@ import { EventoService } from '../../../Services/evento.service';
 import { InscripcionService } from '../../../Services/inscripcion.service';
 import { AuthService } from '../../../Services/auth.service';
 import { UsuarioService } from '../../../Services/usuario.service';
-import { EventoDTO, CampoFormularioDTO } from '../../../Models/evento-dto';
+import { EventoDTO, CampoFormularioDTO, ModalidadEvento } from '../../../Models/evento-dto';
 import { QrCodeDisplayComponent } from '../../../Components/qr-code-display/qr-code-display.component';
 import { DynamicEventFieldsComponent } from '../../../Components/dynamic-event-fields/dynamic-event-fields.component';
 import { tap } from 'rxjs';
@@ -22,134 +22,8 @@ import { tap } from 'rxjs';
     DynamicEventFieldsComponent,
     QrCodeDisplayComponent,
   ],
-  template: `
-    <div class="portal-wrap">
-      <div class="portal-inner glass-card">
-        @if (!auth.isLoggedIn()) {
-          <div class="login-prompt">
-            <h1 class="page-title">Inscripción al evento</h1>
-            <p class="text-secondary mb-3">
-              Para inscribirte necesitas una cuenta en Certiva. Inicia sesión y volverás automáticamente a este evento.
-            </p>
-            <button type="button" class="btn btn-gradient" (click)="irALogin()">Iniciar sesión</button>
-            <a routerLink="/registro" class="btn btn-dark-outline ms-2">Crear cuenta</a>
-          </div>
-        } @else if (loading) {
-          <p class="text-secondary">Cargando evento…</p>
-        } @else if (evento) {
-          <a routerLink="/portal/eventos" class="back-link">← Eventos disponibles</a>
-
-          @if (errorMsg) {
-            <div class="alert alert-warning py-2 px-3 mb-3">{{ errorMsg }}</div>
-          }
-
-          <h1 class="page-title mb-2">{{ evento.nombreEvento }}</h1>
-          <p class="text-secondary small mb-1">
-            <strong>Inicio:</strong> {{ evento.fechaInicio | date: 'short' }} — <strong>Fin:</strong>
-            {{ evento.fechaFin | date: 'short' }}
-          </p>
-
-          @if (!hayCupo) {
-            <div class="alert alert-danger py-2 px-3 mb-3">No hay cupo disponible para este evento.</div>
-          }
-
-          <section class="datos-usuario mb-4 p-3 rounded">
-            <h2 class="h6 text-white-50 mb-2">Tus datos</h2>
-            <p class="small mb-1"><strong>Nombre:</strong> {{ nombreCompleto }}</p>
-            <p class="small mb-2"><strong>Correo:</strong> {{ correoUsuario }}</p>
-            @if (faltaTelefono) {
-              <label class="form-label small">Teléfono de contacto (obligatorio)</label>
-              <input
-                type="tel"
-                class="form-control form-control-sm mb-2"
-                [formControl]="telefonoCtrl"
-                placeholder="Ej. 3001234567"
-              />
-              <button
-                type="button"
-                class="btn btn-dark-outline btn-sm"
-                [disabled]="telefonoCtrl.invalid || guardandoTelefono"
-                (click)="guardarTelefono()"
-              >
-                Guardar teléfono
-              </button>
-            }
-          </section>
-
-          <h2 class="h6 text-white-50 mb-3">Información adicional del evento</h2>
-          <app-dynamic-event-fields [campos]="campos" #dynFields />
-
-          <div class="d-flex gap-2 mt-4 flex-wrap">
-            <button
-              type="button"
-              class="btn btn-gradient"
-              [disabled]="!hayCupo || submitting || faltaTelefono"
-              (click)="enviar()"
-            >
-              @if (submitting) {
-                <span>Enviando…</span>
-              } @else {
-                <span>Confirmar inscripción</span>
-              }
-            </button>
-          </div>
-
-          @if (exitoMsg) {
-            <div class="alert alert-success mt-3 py-2 px-3">{{ exitoMsg }}</div>
-          }
-          @if (tokenQrRegistro) {
-            <div class="qr-inscripcion mt-3 p-3 rounded border border-secondary border-opacity-25">
-              <h3 class="h6 text-white-50">QR de registro (pase de entrada)</h3>
-              <p class="small text-muted mb-2">
-                Guárdalo en tu celular y preséntalo en la entrada. El personal de apoyo lo escaneará para registrar tu asistencia.
-              </p>
-              <app-qr-code-display
-                [data]="tokenQrRegistro"
-                [size]="200"
-                caption="Pase de entrada"
-                [showUrl]="true"
-              />
-              <a routerLink="/portal/mis-eventos" class="btn btn-dark-outline btn-sm mt-3">Ver en Mis eventos</a>
-            </div>
-          }
-        }
-      </div>
-    </div>
-  `,
-  styles: [
-    `
-      .portal-wrap {
-        min-height: 100vh;
-        padding: 2rem 1.25rem;
-        background: var(--gradient-bg);
-      }
-      .portal-inner {
-        max-width: 640px;
-        margin: 0 auto;
-        padding: 2rem 1.75rem;
-      }
-      .datos-usuario {
-        border: 1px solid rgba(34, 211, 238, 0.2);
-        background: rgba(34, 211, 238, 0.05);
-      }
-      .login-prompt {
-        text-align: center;
-        padding: 1rem 0;
-      }
-      .back-link {
-        display: inline-block;
-        margin-bottom: 1rem;
-        color: var(--accent-cyan);
-        text-decoration: none;
-        font-size: 0.9rem;
-      }
-      .page-title {
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: var(--text-primary);
-      }
-    `,
-  ],
+  templateUrl: './inscribir-evento.html',
+  styleUrl: './inscribir-evento.scss',
 })
 export class InscribirEvento implements OnInit {
   private route = inject(ActivatedRoute);
@@ -165,6 +39,7 @@ export class InscribirEvento implements OnInit {
   evento: EventoDTO | null = null;
   campos: CampoFormularioDTO[] = [];
   tokenQrRegistro: string | null = null;
+  porcentajeAsistenciaMinimo: number | null = null;
 
   loading = true;
   submitting = false;
@@ -203,11 +78,13 @@ export class InscribirEvento implements OnInit {
             enlaceVirtual: pub.enlaceVirtual,
             aforoMaximo: pub.aforoMaximo,
             intensidadHoraria: pub.intensidadHoraria,
+            porcentajeAsistenciaMinimo: pub.porcentajeAsistenciaMinimo ?? 80,
             precio: pub.precio,
             gratuito: pub.gratuito,
             camposPersonalizados: pub.camposPersonalizados,
           };
           this.campos = pub.camposPersonalizados ?? [];
+          this.porcentajeAsistenciaMinimo = pub.porcentajeAsistenciaMinimo ?? 80;
           this.hayCupo = pub.hayCupoDisponible;
           this.loading = false;
         },
@@ -228,6 +105,8 @@ export class InscribirEvento implements OnInit {
       next: ev => {
         this.evento = ev;
         this.campos = ev.camposPersonalizados ?? [];
+        this.porcentajeAsistenciaMinimo =
+          ev.porcentajeAsistenciaMinimo ?? ev.detalleCurso?.porcentajeAsistenciaMinimo ?? 80;
         this.loading = false;
         this.refrescarCupo(id);
       },
@@ -236,6 +115,15 @@ export class InscribirEvento implements OnInit {
         this.errorMsg = 'No se encontró el evento.';
       },
     });
+  }
+
+  etiquetaModalidad(modalidad: ModalidadEvento): string {
+    const map: Record<ModalidadEvento, string> = {
+      PRESENCIAL: 'Presencial',
+      VIRTUAL: 'Virtual',
+      HIBRIDO: 'Híbrido',
+    };
+    return map[modalidad] ?? modalidad;
   }
 
   irALogin(): void {

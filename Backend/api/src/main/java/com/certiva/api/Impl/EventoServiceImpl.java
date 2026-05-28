@@ -87,6 +87,7 @@ import com.certiva.api.Service.EventoService;
 import com.certiva.api.Util.EventoArchivoStorage;
 import com.certiva.api.Util.EventoEdicionPolicy;
 import com.certiva.api.Util.EventoMapper;
+import com.certiva.api.Util.EventoAsistenciaHelper;
 import com.certiva.api.Util.EstadoOperativoEventoHelper;
 import com.certiva.api.Util.InscripcionEstadoHelper;
 import com.certiva.api.Util.SecurityUsuarioHelper;
@@ -166,12 +167,13 @@ public class EventoServiceImpl implements EventoService {
         validarDetallePorTipo(dto);
         normalizarStaffEnDto(dto);
 
-        Usuario creador = usuarioActualDesdeSeguridad();
+        Usuario actor = usuarioActualDesdeSeguridad();
+        Usuario profesorLider = cargarProfesorLider(dto.getIdProfesorLider());
         Evento evento = nuevaInstancia(dto.getTipoEvento());
         aplicarCamposComunes(evento, dto);
         evento.setEstado(true);
         evento.setEstadoOperativo(EstadoOperativoEvento.PROXIMO);
-        evento.setUsuarioCreador(creador);
+        evento.setUsuarioCreador(profesorLider);
         aplicarDetalleEnEntidad(evento, dto);
         _catalogoHelper.asignarCatalogoSiFalta(evento);
         validarEntidadAntesDeGuardar(evento);
@@ -179,6 +181,8 @@ public class EventoServiceImpl implements EventoService {
 
         if (imagen != null && !imagen.isEmpty()) {
             evento.setRutaImagenPromocional(_archivoStorage.guardarImagen(imagen));
+        } else if (dto.getImagenPromocionalUrl() != null && !dto.getImagenPromocionalUrl().isBlank()) {
+            evento.setRutaImagenPromocional(dto.getImagenPromocionalUrl().trim());
         }
         if (pensum != null && !pensum.isEmpty()) {
             evento.setRutaPensum(_archivoStorage.guardarPensum(pensum));
@@ -196,11 +200,12 @@ public class EventoServiceImpl implements EventoService {
 
         _auditoriaService.registrarAuditoria(
                 AuditoriaAccion.EVENT_CREATED,
-                "El usuario " + creador.getIdUsuario() + " creó el evento \"" + evento.getNombreEvento() + "\"",
+                "El usuario " + actor.getIdUsuario() + " creó el evento \"" + evento.getNombreEvento()
+                        + "\" con profesor líder " + profesorLider.getIdUsuario(),
                 null,
-                creador);
+                actor);
 
-        return construirDtoPostGuardado(evento, profesores, monitores, creador);
+        return construirDtoPostGuardado(evento, profesores, monitores);
     }
 
     @Override
@@ -416,9 +421,16 @@ public class EventoServiceImpl implements EventoService {
         evento.setCosto(dto.getPrecio() != null ? dto.getPrecio() : 0.0);
         evento.setTextoDiploma(dto.getTextoDiploma());
         evento.setFirmaDigitalProfesor(dto.getFirmaDigitalProfesor());
+        if (dto.getPorcentajeAsistenciaMinimo() != null) {
+            evento.setPorcentajeAsistenciaMinimo(dto.getPorcentajeAsistenciaMinimo());
+        }
+        if (dto.getImagenPromocionalUrl() != null && !dto.getImagenPromocionalUrl().isBlank()) {
+            evento.setRutaImagenPromocional(dto.getImagenPromocionalUrl().trim());
+        }
         if (dto.getEstado() != null) {
             evento.setEstado(dto.getEstado());
         }
+        evento.setUsuarioCreador(cargarProfesorLider(dto.getIdProfesorLider()));
 
         aplicarDetalleEnEntidadDesdeDto(evento, dto);
 
@@ -521,7 +533,32 @@ public class EventoServiceImpl implements EventoService {
             throw new OperacionNoPermitidaException(
                     "El evento ya no admite inscripciones (estado: " + op + ").");
         }
+        return construirEventoPublicoDto(evento, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EventoPublicoDTO obtenerPublicoPorId(Long idEvento) {
+        if (idEvento == null) {
+            throw new RecursoNoEncontradoException("Evento no encontrado");
+        }
+        Evento evento = _eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
+        if (!Boolean.TRUE.equals(evento.getEstado())) {
+            throw new RecursoNoEncontradoException("Evento no disponible");
+        }
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        if (op == EstadoOperativoEvento.EVENT_CANCELLED) {
+            throw new RecursoNoEncontradoException("Evento no disponible");
+        }
+        return construirEventoPublicoDto(evento, false);
+    }
+
+    private EventoPublicoDTO construirEventoPublicoDto(Evento evento, boolean incluirCamposInscripcion) {
         EventoCupoVerificacionDTO cupo = verificarCupo(evento.getIdEvento());
+        EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, LocalDateTime.now());
+        boolean puedeInscribir = op == EstadoOperativoEvento.PROXIMO && cupo.isHayCupoDisponible();
+        Usuario creador = evento.getUsuarioCreador();
         return EventoPublicoDTO.builder()
                 .idEvento(evento.getIdEvento())
                 .nombreEvento(evento.getNombreEvento())
@@ -538,9 +575,18 @@ public class EventoServiceImpl implements EventoService {
                 .gratuito(evento.isGratuito())
                 .rutaImagenPromocional(evento.getRutaImagenPromocional())
                 .codigoDifusion(evento.getCodigoDifusion())
-                .urlInscripcionPublica(_appProperties.urlInscripcionPorCodigoDifusion(evento.getCodigoDifusion()))
+                .urlInscripcionPublica(evento.getCodigoDifusion() != null && !evento.getCodigoDifusion().isBlank()
+                        ? _appProperties.urlInscripcionPorCodigoDifusion(evento.getCodigoDifusion())
+                        : null)
                 .hayCupoDisponible(cupo.isHayCupoDisponible())
-                .camposPersonalizados(camposADto(evento.getIdEvento()))
+                .porcentajeAsistenciaMinimo(EventoAsistenciaHelper.resolverPorcentajeMinimo(evento))
+                .camposPersonalizados(incluirCamposInscripcion ? camposADto(evento.getIdEvento()) : List.of())
+                .area(areaPorTipo(evento.getTipoEvento()))
+                .instructorNombres(creador != null ? creador.getNombres() : null)
+                .instructorApellidos(creador != null ? creador.getApellidos() : null)
+                .instructorRolEtiqueta("Profesor líder")
+                .inscritosActivos(cupo.getInscritosActivos())
+                .puedeInscribirse(puedeInscribir)
                 .build();
     }
 
@@ -711,11 +757,10 @@ public class EventoServiceImpl implements EventoService {
 
         List<Inscripcion> inscripciones = _inscripcionRepository.findActivasPorEventoConUsuario(idEvento);
         Double notaMinima = null;
-        Integer pctMin = null;
         if (evento instanceof CursoEvento curso) {
             notaMinima = curso.getNotaMinimaAprobacion();
-            pctMin = curso.getPorcentajeAsistenciaMinimo();
         }
+        Integer pctMin = EventoAsistenciaHelper.resolverPorcentajeMinimo(evento);
 
         List<EventoRevisionAlumnoDTO> alumnos = new ArrayList<>();
         long elegibles = 0;
@@ -973,7 +1018,7 @@ public class EventoServiceImpl implements EventoService {
 
         int pct = ProfesorAsistenciaHelper.porcentajeAsistenciaEstudiante(ins, evento, ahora);
         boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
-        boolean cumpleAsistencia = pctMin == null || pctMin <= 0 || pct >= pctMin || asistio;
+        boolean cumpleAsistencia = pct >= pctMin;
         boolean elegible = _elegibilidadService.puedeEmitirCertificado(ins);
         String motivo = elegible ? null : _elegibilidadService.motivoPendienteCertificado(ins);
 
@@ -1249,6 +1294,9 @@ public class EventoServiceImpl implements EventoService {
         evento.setCosto(dto.getPrecio() != null ? dto.getPrecio() : 0.0);
         evento.setTextoDiploma(dto.getTextoDiploma());
         evento.setFirmaDigitalProfesor(dto.getFirmaDigitalProfesor());
+        if (dto.getPorcentajeAsistenciaMinimo() != null) {
+            evento.setPorcentajeAsistenciaMinimo(dto.getPorcentajeAsistenciaMinimo());
+        }
     }
 
     private void aplicarDetalleEnEntidad(Evento evento, CrearEventoDTO dto) {
@@ -1306,15 +1354,13 @@ public class EventoServiceImpl implements EventoService {
         if (evento.getCatalogoTipoEvento() == null) {
             throw new OperacionNoPermitidaException("No se pudo asociar el tipo de evento al catálogo (id_tipo_evento).");
         }
+        EventoAsistenciaHelper.validarPorcentajeMinimo(evento.getPorcentajeAsistenciaMinimo());
         if (evento instanceof CursoEvento curso) {
             if (curso.getNivelAcademico() == null) {
                 throw new OperacionNoPermitidaException("El nivel académico del curso es obligatorio.");
             }
             if (curso.getNotaMinimaAprobacion() == null) {
                 throw new OperacionNoPermitidaException("La nota mínima del curso es obligatoria.");
-            }
-            if (curso.getPorcentajeAsistenciaMinimo() == null) {
-                throw new OperacionNoPermitidaException("La asistencia mínima del curso es obligatoria.");
             }
         }
     }
@@ -1346,6 +1392,7 @@ public class EventoServiceImpl implements EventoService {
     }
 
     private void validarDetallePorTipo(CrearEventoDTO dto) {
+        EventoAsistenciaHelper.validarPorcentajeMinimo(dto.getPorcentajeAsistenciaMinimo());
         switch (dto.getTipoEvento()) {
             case CURSO -> {
                 if (dto.getDetalleCurso() == null) {
@@ -1389,7 +1436,13 @@ public class EventoServiceImpl implements EventoService {
      * Evita asignar estudiantes como monitores.
      */
     private void normalizarStaffEnDto(CrearEventoDTO dto) {
+        if (dto.getIdProfesorLider() == null || dto.getIdProfesorLider() <= 0) {
+            throw new OperacionNoPermitidaException("Debe seleccionar un profesor líder para el evento.");
+        }
         List<Long> profesores = normalizarIdsUsuarios(dto.getIdsProfesoresColaboradores());
+        profesores = profesores.stream()
+                .filter(id -> !id.equals(dto.getIdProfesorLider()))
+                .toList();
         List<Long> monitores = normalizarIdsUsuarios(dto.getIdsMonitoresAsignados());
         validarCruceStaff(profesores, monitores);
         dto.setIdsProfesoresColaboradores(profesores);
@@ -1397,8 +1450,14 @@ public class EventoServiceImpl implements EventoService {
     }
 
     private void normalizarStaffEnEventoDto(EventoDTO dto) {
+        if (dto.getIdProfesorLider() == null || dto.getIdProfesorLider() <= 0) {
+            throw new OperacionNoPermitidaException("Debe seleccionar un profesor líder para el evento.");
+        }
         if (dto.getIdsProfesoresColaboradores() != null) {
-            dto.setIdsProfesoresColaboradores(normalizarIdsUsuarios(dto.getIdsProfesoresColaboradores()));
+            dto.setIdsProfesoresColaboradores(
+                    normalizarIdsUsuarios(dto.getIdsProfesoresColaboradores()).stream()
+                            .filter(id -> !id.equals(dto.getIdProfesorLider()))
+                            .toList());
         }
         if (dto.getIdsMonitoresAsignados() != null) {
             dto.setIdsMonitoresAsignados(normalizarIdsUsuarios(dto.getIdsMonitoresAsignados()));
@@ -1480,6 +1539,22 @@ public class EventoServiceImpl implements EventoService {
             resultado.add(u);
         }
         return resultado;
+    }
+
+    private Usuario cargarProfesorLider(Long idProfesorLider) {
+        if (idProfesorLider == null || idProfesorLider <= 0) {
+            throw new OperacionNoPermitidaException("Debe seleccionar un profesor líder.");
+        }
+        Usuario profesor = _usuarioRepository.findById(idProfesorLider)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesor líder no encontrado."));
+        if (!Boolean.TRUE.equals(profesor.getEstado())) {
+            throw new OperacionNoPermitidaException("El profesor líder seleccionado está inactivo.");
+        }
+        boolean esProfesor = profesor.getRoles().stream().anyMatch(r -> ROL_PROFESOR.equals(r.getNombre()));
+        if (!esProfesor) {
+            throw new OperacionNoPermitidaException("El usuario seleccionado como líder no tiene rol PROFESOR.");
+        }
+        return profesor;
     }
 
     private static Boolean resolverFiltroActivo(Boolean soloActivos) {
@@ -1605,10 +1680,11 @@ public class EventoServiceImpl implements EventoService {
     private EventoDTO construirDtoPostGuardado(
             Evento evento,
             Set<Usuario> profesores,
-            Set<Usuario> monitores,
-            Usuario creador) {
+            Set<Usuario> monitores) {
         EventoDTO salida = _eventoMapper.toDto(evento, false);
-        salida.setIdUsuarioCreador(creador.getIdUsuario());
+        salida.setIdUsuarioCreador(evento.getUsuarioCreador() != null ? evento.getUsuarioCreador().getIdUsuario() : null);
+        salida.setIdProfesorLider(evento.getUsuarioCreador() != null ? evento.getUsuarioCreador().getIdUsuario() : null);
+        salida.setProfesorLider(_eventoMapper.toStaff(evento.getUsuarioCreador()));
         salida.setProfesoresColaboradores(
                 profesores.stream().map(_eventoMapper::toStaff).toList());
         salida.setMonitoresAsignados(

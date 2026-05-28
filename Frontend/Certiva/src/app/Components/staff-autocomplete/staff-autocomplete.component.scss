@@ -4,6 +4,47 @@
   margin: -0.15rem 0 0.65rem;
 }
 
+:host-context(.evento-modal-form) {
+  .form-label-dark {
+    color: #e2eaf8;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .staff-ac-hint {
+    color: #b0bdd4;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-control-dark {
+    background-color: #1e2a48 !important;
+    border-color: rgba(165, 180, 210, 0.42) !important;
+    color: #f8fafc !important;
+    font-size: 0.975rem;
+    padding: 0.8rem 1rem;
+
+    &::placeholder {
+      color: #8fa3c4;
+    }
+  }
+
+  .staff-ac-list {
+    border-color: rgba(165, 180, 210, 0.35);
+    background: #1a2340;
+  }
+
+  .staff-ac-item {
+    color: #f1f5f9;
+    font-size: 0.9rem;
+  }
+
+  small.text-muted {
+    color: #a8b8d4 !important;
+  }
+}
+
 .staff-ac-list {
   list-style: none;
   padding: 0;

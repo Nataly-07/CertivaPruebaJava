@@ -23,6 +23,7 @@ public class EventoPublicoDTO {
     private String enlaceVirtual;
     private Integer aforoMaximo;
     private Integer intensidadHoraria;
+    private Integer porcentajeAsistenciaMinimo;
     private Double precio;
     private Boolean gratuito;
     private String rutaImagenPromocional;
@@ -30,4 +31,13 @@ public class EventoPublicoDTO {
     private String urlInscripcionPublica;
     private boolean hayCupoDisponible;
     private List<CampoFormularioDTO> camposPersonalizados;
+
+    /** Etiqueta de área para badges (catálogo / detalle). */
+    private String area;
+    private String instructorNombres;
+    private String instructorApellidos;
+    private String instructorRolEtiqueta;
+    private Long inscritosActivos;
+    /** true si el evento admite inscripción en este momento. */
+    private Boolean puedeInscribirse;
 }

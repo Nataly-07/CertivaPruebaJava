@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
+import { PrecioEventoPipe, PrecioGratuitoPipe } from '../../../pipes/precio-evento.pipe';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { EventoService } from '../../../Services/evento.service';
@@ -15,11 +16,12 @@ import {
   HERO_CATALOGO_IMAGEN_FALLBACKS,
 } from '../../../constants/catalogo-assets';
 import { etiquetaModalidad, etiquetaTipoEvento } from '../../../constants/ui-labels';
+import { resolverUrlImagenEvento, placeholderGradienteTipo } from '../../../utils/evento-imagen.util';
 
 @Component({
   selector: 'app-eventos-disponibles',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, CurrencyPipe],
+  imports: [CommonModule, RouterLink, DatePipe, PrecioEventoPipe, PrecioGratuitoPipe],
   templateUrl: './eventos-disponibles.html',
   styleUrl: './eventos-disponibles.scss',
 })
@@ -191,6 +193,19 @@ export class EventosDisponibles implements OnInit {
       return 'Agotado';
     }
     return '+ Inscribirse';
+  }
+
+  imagenEvento(evento: EventoPublico): string | null {
+    return resolverUrlImagenEvento(evento.rutaImagenPromocional);
+  }
+
+  placeholderTipo(tipo: TipoEventoEnum): string {
+    return placeholderGradienteTipo(tipo);
+  }
+
+  abrirDetalle(evento: EventoPublico): void {
+    const base = this.authService.isLoggedIn() ? '/portal/eventos' : '/catalogo/eventos';
+    this.router.navigate([base, evento.idEvento]);
   }
 
   inscribirse(evento: EventoPublico): void {

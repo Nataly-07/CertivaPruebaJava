@@ -55,6 +55,10 @@ public class CrearEventoDTO {
     @Positive
     private Integer intensidadHoraria;
 
+    /** Asistencia mínima (%) requerida para certificar (1–100). Obligatorio en todos los tipos. */
+    @NotNull
+    private Integer porcentajeAsistenciaMinimo;
+
     @NotNull
     @PositiveOrZero
     private Double precio;
@@ -64,6 +68,12 @@ public class CrearEventoDTO {
 
     @Size(max = 500)
     private String firmaDigitalProfesor;
+
+    @NotNull
+    private Long idProfesorLider;
+
+    @Size(max = 10000)
+    private String imagenPromocionalUrl;
 
     private List<Long> idsProfesoresColaboradores = new ArrayList<>();
 

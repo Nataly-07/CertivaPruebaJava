@@ -1,10 +1,14 @@
 @if (campos.length) {
-  <form [formGroup]="form" class="dynamic-fields">
+  <form
+    [formGroup]="form"
+    class="dynamic-fields"
+    [class.dynamic-fields--inscripcion]="layout === 'inscripcion'"
+  >
     @if (imagenError()) {
       <div class="alert alert-warning py-2 px-3 mb-3">{{ imagenError() }}</div>
     }
     @for (c of campos; track trackByCampo($index, c); let idx = $index) {
-      <div class="mb-3">
+      <div class="mb-3" [class.campo-card]="layout === 'inscripcion'">
         <label class="form-label-dark" [attr.for]="key(c, idx)">
           {{ c.etiqueta }}
           @if (c.esObligatorio) {
@@ -88,5 +92,5 @@
     }
   </form>
 } @else {
-  <p class="text-secondary small mb-0">Este evento no solicita datos adicionales en la inscripción.</p>
+  <p class="dynamic-fields--empty">Este evento no solicita datos adicionales en la inscripción.</p>
 }

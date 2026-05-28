@@ -43,6 +43,8 @@ public class EventoMapper {
         dto.setEnlaceVirtual(e.getEnlaceVirtual());
         dto.setAforoMaximo(e.getAforoMaximo());
         dto.setIntensidadHoraria(e.getIntensidadHoraria());
+        dto.setPorcentajeAsistenciaMinimo(
+                com.certiva.api.Util.EventoAsistenciaHelper.resolverPorcentajeMinimo(e));
         dto.setPrecio(e.getCosto());
         dto.setGratuito(e.isGratuito());
         dto.setCodigoDifusion(e.getCodigoDifusion());
@@ -53,11 +55,14 @@ public class EventoMapper {
         dto.setRutaPensum(e.getRutaPensum());
         dto.setTextoDiploma(e.getTextoDiploma());
         dto.setFirmaDigitalProfesor(e.getFirmaDigitalProfesor());
+        dto.setImagenPromocionalUrl(e.getRutaImagenPromocional());
         dto.setEstado(e.getEstado());
         dto.setEstadoOperativo(
                 com.certiva.api.Util.EstadoOperativoEventoHelper.resolverOperativoVisible(
                         e, java.time.LocalDateTime.now()));
         dto.setIdUsuarioCreador(e.getUsuarioCreador() != null ? e.getUsuarioCreador().getIdUsuario() : null);
+        dto.setIdProfesorLider(e.getUsuarioCreador() != null ? e.getUsuarioCreador().getIdUsuario() : null);
+        dto.setProfesorLider(toStaff(e.getUsuarioCreador()));
 
         if (incluirStaff) {
             dto.setProfesoresColaboradores(staffList(e.getProfesoresColaboradores()));
@@ -79,7 +84,8 @@ public class EventoMapper {
                     DetalleCursoDTO d = new DetalleCursoDTO();
                     d.setNivelAcademico(c.getNivelAcademico());
                     d.setNotaMinimaAprobacion(c.getNotaMinimaAprobacion());
-                    d.setPorcentajeAsistenciaMinimo(c.getPorcentajeAsistenciaMinimo());
+                    d.setPorcentajeAsistenciaMinimo(
+                            com.certiva.api.Util.EventoAsistenciaHelper.resolverPorcentajeMinimo(c));
                     dto.setDetalleCurso(d);
                 }
             }
@@ -136,9 +142,6 @@ public class EventoMapper {
     }
 
     private String resolverInstructorPrincipal(Evento e) {
-        if (e.getProfesoresColaboradores() != null && !e.getProfesoresColaboradores().isEmpty()) {
-            return nombreCompleto(e.getProfesoresColaboradores().iterator().next());
-        }
         if (e.getUsuarioCreador() != null) {
             return nombreCompleto(e.getUsuarioCreador());
         }

@@ -85,6 +85,7 @@ export interface EventoDTO {
   enlaceVirtual?: string | null;
   aforoMaximo: number;
   intensidadHoraria: number;
+  porcentajeAsistenciaMinimo: number;
   precio: number;
   gratuito?: boolean;
   codigoDifusion?: string | null;
@@ -93,6 +94,8 @@ export interface EventoDTO {
   rutaPensum?: string | null;
   textoDiploma?: string | null;
   firmaDigitalProfesor?: string | null;
+  idProfesorLider?: number | null;
+  imagenPromocionalUrl?: string | null;
   estado?: boolean | null;
   estadoOperativo?: EstadoOperativoEvento | null;
   idUsuarioCreador?: number | null;
@@ -100,6 +103,7 @@ export interface EventoDTO {
   idsMonitoresAsignados?: number[];
   profesoresColaboradores?: UsuarioStaffDTO[];
   monitoresAsignados?: UsuarioStaffDTO[];
+  profesorLider?: UsuarioStaffDTO | null;
   detalleCurso?: DetalleCursoDTO | null;
   detalleHackathon?: DetalleHackathonDTO | null;
   detalleFeria?: DetalleFeriaDTO | null;
@@ -118,9 +122,12 @@ export interface CrearEventoDTO {
   enlaceVirtual?: string | null;
   aforoMaximo: number;
   intensidadHoraria: number;
+  porcentajeAsistenciaMinimo: number;
   precio: number;
   textoDiploma?: string | null;
   firmaDigitalProfesor?: string | null;
+  idProfesorLider: number;
+  imagenPromocionalUrl?: string | null;
   idsProfesoresColaboradores?: number[];
   idsMonitoresAsignados?: number[];
   detalleCurso?: DetalleCursoDTO | null;
@@ -164,6 +171,7 @@ export interface EventoPublicoDTO {
   enlaceVirtual?: string | null;
   aforoMaximo: number;
   intensidadHoraria: number;
+  porcentajeAsistenciaMinimo?: number;
   precio: number;
   gratuito?: boolean;
   rutaImagenPromocional?: string | null;
@@ -171,6 +179,12 @@ export interface EventoPublicoDTO {
   urlInscripcionPublica?: string | null;
   hayCupoDisponible: boolean;
   camposPersonalizados?: CampoFormularioDTO[];
+  area?: string | null;
+  instructorNombres?: string | null;
+  instructorApellidos?: string | null;
+  instructorRolEtiqueta?: string | null;
+  inscritosActivos?: number | null;
+  puedeInscribirse?: boolean | null;
 }
 
 export interface EventoResumenTipoDTO {

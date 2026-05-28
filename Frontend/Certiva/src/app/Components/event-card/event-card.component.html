@@ -1,4 +1,12 @@
-<article class="event-card" [class.event-card--inscrito]="yaInscrito">
+<article
+  class="event-card event-card--clickable"
+  [class.event-card--inscrito]="yaInscrito"
+  role="button"
+  tabindex="0"
+  (click)="verDetalle()"
+  (keydown.enter)="verDetalle()"
+  [attr.aria-label]="'Ver detalle de ' + evento.nombreEvento"
+>
   <div class="event-card__media">
     @if (imagenUrl(); as src) {
       <img [src]="src" [alt]="evento.nombreEvento" class="event-card__img" loading="lazy" />
@@ -87,13 +95,19 @@
           <i class="bi bi-check-lg"></i>
           Ya estás inscrito
         </span>
-        <a class="btn-accion btn-accion--outline" routerLink="/portal/mis-eventos">Ver detalles</a>
+        <a
+          class="btn-accion btn-accion--outline"
+          routerLink="/portal/mis-eventos"
+          (click)="$event.stopPropagation()"
+          >Ver detalles</a
+        >
       } @else if (sinCupo()) {
         <span class="btn-accion btn-accion--disabled">Cupos agotados</span>
       } @else if (ultimosLugares()) {
         <a
           class="btn-accion btn-accion--urgente"
           [routerLink]="['/portal/eventos', evento.idEvento, 'inscribir']"
+          (click)="$event.stopPropagation()"
         >
           <i class="bi bi-exclamation-triangle"></i>
           Últimos lugares
@@ -102,6 +116,7 @@
         <a
           class="btn-accion btn-accion--inscribir"
           [routerLink]="['/portal/eventos', evento.idEvento, 'inscribir']"
+          (click)="$event.stopPropagation()"
         >
           <i class="bi bi-plus-lg"></i>
           Inscribirse

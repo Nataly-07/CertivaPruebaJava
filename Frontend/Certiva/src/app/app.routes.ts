@@ -22,6 +22,11 @@ export const routes: Routes = [
       import('./pages/portal/eventos-disponibles/eventos-disponibles').then(m => m.EventosDisponibles),
   },
   {
+    path: 'catalogo/eventos/:id',
+    loadComponent: () =>
+      import('./pages/portal/detalle-evento/detalle-evento').then(m => m.DetalleEvento),
+  },
+  {
     path: 'portal/inscribir/d/:codigo',
     loadComponent: () => import('./pages/portal/inscribir-evento/inscribir-evento').then(m => m.InscribirEvento),
   },
@@ -47,6 +52,11 @@ export const routes: Routes = [
       {
         path: 'eventos/:id/inscribir',
         loadComponent: () => import('./pages/portal/inscribir-evento/inscribir-evento').then(m => m.InscribirEvento),
+      },
+      {
+        path: 'eventos/:id',
+        loadComponent: () =>
+          import('./pages/portal/detalle-evento/detalle-evento').then(m => m.DetalleEvento),
       },
     ],
   },

@@ -146,7 +146,12 @@
                   <h3 class="curso-card__title">{{ ev.nombreEvento }}</h3>
                   <span class="curso-card__tipo">{{ etiquetaTipo(ev.tipoEvento) }}</span>
                 </header>
-                <p class="curso-card__estado">{{ etiquetaEstado(ev.estadoOperativo) }}</p>
+                <!-- <p class="curso-card__estado">{{ etiquetaEstado(ev.estadoOperativo) }}</p> -->
+
+                <p class="curso-card__estado">
+                    {{ etiquetaEstado(ev.estadoOperativo ?? '') }}
+                </p>
+
                 <p class="curso-card__fechas">{{ ev.fechaInicio | date: 'mediumDate' }} — {{ ev.fechaFin | date: 'shortTime' }}</p>
                 <div class="curso-card__actions">
                   @if (esEventoPropio(ev)) {

@@ -69,23 +69,41 @@
     } @else {
       <div class="contenedor-eventos">
         @for (evento of eventosMostrados; track evento.idEvento) {
-          <article class="event-card" [ngClass]="claseTagTipo(evento.tipoEvento)">
+          <article
+            class="event-card event-card--clickable"
+            [ngClass]="claseTagTipo(evento.tipoEvento)"
+            role="button"
+            tabindex="0"
+            (click)="abrirDetalle(evento)"
+            (keydown.enter)="abrirDetalle(evento)"
+            [attr.aria-label]="'Ver detalle de ' + evento.nombreEvento"
+          >
+            <div class="event-card__banner">
+              @if (imagenEvento(evento); as src) {
+                <img class="event-card__banner-img" [src]="src" [alt]="evento.nombreEvento" loading="lazy" />
+              } @else {
+                <div
+                  class="event-card__banner-placeholder"
+                  [style.background]="placeholderTipo(evento.tipoEvento)"
+                ></div>
+              }
+            </div>
             <div class="card-top-tags">
               <span class="tag-label" [ngClass]="claseTagTipo(evento.tipoEvento)">
                 {{ evento.area }} • {{ etiquetaTipo(evento.tipoEvento) }}
               </span>
               <div class="right-tags">
-                @if (evento.gratuito) {
+                @if (evento.precio | precioGratuito: evento.gratuito) {
                   <span class="badge-free">Gratuito</span>
                 } @else {
-                  <span class="badge-price">{{ evento.precio | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                  <span class="badge-price">{{ evento.precio | precioEvento: evento.gratuito }}</span>
                 }
                 @if (esEstudiante()) {
                   <button
                     type="button"
                     class="bookmark-btn"
                     [class.bookmark-btn--on]="esFavorito(evento.idEvento)"
-                    (click)="toggleFavorito(evento, $event)"
+                    (click)="toggleFavorito(evento, $event); $event.stopPropagation()"
                     [attr.aria-label]="esFavorito(evento.idEvento) ? 'Quitar favorito' : 'Guardar favorito'"
                   >
                     <i
@@ -143,7 +161,7 @@
                 class="btn-enroll"
                 [class.btn-enroll--done]="yaInscrito(evento.idEvento)"
                 [disabled]="!puedeInscribirse(evento)"
-                (click)="inscribirse(evento)"
+                (click)="inscribirse(evento); $event.stopPropagation()"
               >
                 {{ textoBotonInscripcion(evento) }}
               </button>

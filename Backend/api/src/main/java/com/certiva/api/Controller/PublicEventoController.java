@@ -39,6 +39,16 @@ public class PublicEventoController {
         }
     }
 
+    @GetMapping("/{idEvento}")
+    public ResponseEntity<EventoPublicoDTO> obtenerPorId(@PathVariable Long idEvento) {
+        return ResponseEntity.ok(eventoService.obtenerPublicoPorId(idEvento));
+    }
+
+    @GetMapping("/{idEvento}/cupo")
+    public ResponseEntity<EventoCupoVerificacionDTO> verificarCupoPorId(@PathVariable Long idEvento) {
+        return ResponseEntity.ok(eventoService.verificarCupo(idEvento));
+    }
+
     @GetMapping("/difusion/{codigoDifusion}")
     public ResponseEntity<EventoPublicoDTO> obtenerPorCodigoDifusion(@PathVariable String codigoDifusion) {
         return ResponseEntity.ok(eventoService.obtenerPublicoPorCodigoDifusion(codigoDifusion));

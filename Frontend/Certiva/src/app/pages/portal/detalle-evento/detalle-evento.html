@@ -1,0 +1,131 @@
+<div class="detalle-page">
+  <div class="detalle-inner">
+    <a [routerLink]="rutaVolver()" class="back-link">← Volver al catálogo</a>
+
+    @if (loading()) {
+      <p class="state-msg">Cargando evento…</p>
+    } @else if (errorMsg()) {
+      <div class="alert alert-warning py-2 px-3">{{ errorMsg() }}</div>
+    } @else if (evento(); as ev) {
+      <header class="detalle-hero">
+        <div class="detalle-hero__media">
+          @if (imagenUrl(ev); as src) {
+            <img
+              class="detalle-hero__img"
+              [src]="src"
+              [alt]="'Imagen promocional: ' + ev.nombreEvento"
+              (error)="onImagenError()"
+            />
+          } @else {
+            <div class="detalle-hero__placeholder" [style.background]="placeholder(ev)"></div>
+          }
+          <div class="detalle-hero__overlay"></div>
+          <div class="detalle-hero__badges">
+            <span class="hero-badge-tipo">{{ ev.area ?? etiquetaTipo(ev.tipoEvento!) }}</span>
+            @if (ev.precio | precioGratuito: ev.gratuito) {
+              <span class="hero-badge-precio hero-badge-precio--free">Gratuito</span>
+            } @else {
+              <span class="hero-badge-precio">{{ ev.precio | precioEvento: ev.gratuito }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="detalle-hero__content">
+          <h1 class="detalle-title">{{ ev.nombreEvento }}</h1>
+          <p class="detalle-sub">
+            {{ etiquetaTipo(ev.tipoEvento!) }} · {{ etiquetaMod(ev.modalidad!) }}
+          </p>
+        </div>
+      </header>
+
+      <div class="detalle-grid">
+        <section class="detalle-panel detalle-panel--main">
+          @if (ev.descripcion) {
+            <h2 class="panel-heading">Acerca del evento</h2>
+            <p class="detalle-descripcion">{{ ev.descripcion }}</p>
+          }
+
+          <h2 class="panel-heading">Información</h2>
+          <dl class="info-list">
+            <div class="info-row">
+              <dt>Inicio</dt>
+              <dd>{{ ev.fechaInicio | date: 'fullDate' }} · {{ ev.fechaInicio | date: 'shortTime' }}</dd>
+            </div>
+            <div class="info-row">
+              <dt>Fin</dt>
+              <dd>{{ ev.fechaFin | date: 'fullDate' }} · {{ ev.fechaFin | date: 'shortTime' }}</dd>
+            </div>
+            <div class="info-row">
+              <dt>Modalidad</dt>
+              <dd>{{ etiquetaMod(ev.modalidad!) }}</dd>
+            </div>
+            <div class="info-row">
+              <dt>Ubicación</dt>
+              <dd>{{ ubicacionTexto(ev) }}</dd>
+            </div>
+            @if (ev.intensidadHoraria) {
+              <div class="info-row">
+                <dt>Intensidad</dt>
+                <dd>{{ ev.intensidadHoraria }} horas</dd>
+              </div>
+            }
+            @if (ev.porcentajeAsistenciaMinimo != null) {
+              <div class="info-row">
+                <dt>Certificado</dt>
+                <dd>Requiere al menos {{ ev.porcentajeAsistenciaMinimo }}% de asistencia confirmada</dd>
+              </div>
+            }
+            @if (ev.enlaceVirtual && ev.modalidad !== 'PRESENCIAL') {
+              <div class="info-row">
+                <dt>Enlace virtual</dt>
+                <dd>
+                  <a [href]="ev.enlaceVirtual" target="_blank" rel="noopener noreferrer" class="link-cyan">
+                    Acceder a la plataforma
+                  </a>
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
+
+        <aside class="detalle-panel detalle-panel--side">
+          <div class="instructor-card">
+            <span class="instructor-avatar">{{ instructorIniciales(ev) }}</span>
+            <div>
+              <p class="instructor-label">{{ ev.instructorRolEtiqueta ?? 'Instructor' }}</p>
+              <p class="instructor-name">{{ instructorNombre(ev) }}</p>
+            </div>
+          </div>
+
+          @if (ev.aforoMaximo) {
+            <div class="cupo-block">
+              <div class="cupo-header">
+                <span>Cupos</span>
+                <strong>{{ ev.inscritosActivos ?? 0 }} / {{ ev.aforoMaximo }}</strong>
+              </div>
+              <div class="cupo-track">
+                <div class="cupo-fill" [style.width.%]="porcentajeCupo(ev)"></div>
+              </div>
+              <p class="cupo-hint">{{ porcentajeCupo(ev) }}% ocupado</p>
+            </div>
+          }
+
+          <div class="side-actions">
+            @if (yaInscrito(ev.idEvento)) {
+              <span class="btn btn-dark-outline w-100 mb-2" aria-disabled="true">Ya estás inscrito</span>
+              <a routerLink="/portal/mis-eventos" class="btn btn-gradient w-100">Ver mis eventos</a>
+            } @else if (ev.puedeInscribirse) {
+              <button type="button" class="btn btn-gradient w-100" (click)="inscribirse(ev)">
+                Inscribirme ahora
+              </button>
+            } @else if (!ev.hayCupoDisponible) {
+              <span class="btn btn-dark-outline w-100" aria-disabled="true">Cupos agotados</span>
+            } @else {
+              <span class="btn btn-dark-outline w-100" aria-disabled="true">Inscripciones cerradas</span>
+            }
+          </div>
+        </aside>
+      </div>
+    }
+  </div>
+</div>

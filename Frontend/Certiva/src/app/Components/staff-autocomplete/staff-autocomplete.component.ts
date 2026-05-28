@@ -17,6 +17,10 @@ export class StaffAutocompleteComponent implements OnInit {
   /** Tipo de personal a buscar (valor interno; no se muestra al usuario). */
   @Input({ required: true }) tipoStaff!: TipoStaffUi;
   @Input() seleccionados: UsuarioStaffDTO[] = [];
+  @Input() maxSeleccionados: number | null = null;
+  @Input() tituloCustom: string | null = null;
+  @Input() placeholderCustom: string | null = null;
+  @Input() hintCustom: string | null = null;
   @Output() seleccionadosChange = new EventEmitter<UsuarioStaffDTO[]>();
 
   private usuarioService = inject(UsuarioService);
@@ -27,15 +31,15 @@ export class StaffAutocompleteComponent implements OnInit {
   cargando = false;
 
   get titulo(): string {
-    return STAFF_UI[this.tipoStaff].titulo;
+    return this.tituloCustom?.trim() || STAFF_UI[this.tipoStaff].titulo;
   }
 
   get placeholder(): string {
-    return STAFF_UI[this.tipoStaff].placeholder;
+    return this.placeholderCustom?.trim() || STAFF_UI[this.tipoStaff].placeholder;
   }
 
   get hint(): string {
-    return STAFF_UI[this.tipoStaff].hint;
+    return this.hintCustom?.trim() || STAFF_UI[this.tipoStaff].hint;
   }
 
   private get codigoApi(): 'PROFESOR' | 'MONITOR' {
@@ -78,11 +82,20 @@ export class StaffAutocompleteComponent implements OnInit {
     if (this.seleccionados.some(s => s.idUsuario === u.idUsuario)) {
       return;
     }
-    const next = [...this.seleccionados, u];
+    let next = [...this.seleccionados, u];
+    if (this.maxSeleccionados != null && this.maxSeleccionados > 0) {
+      next = next.slice(-this.maxSeleccionados);
+    }
     this.seleccionadosChange.emit(next);
     this.seleccionados = next;
     this.termino = '';
     this.sugerencias = [];
+  }
+
+  get alcanzadoMaximo(): boolean {
+    return this.maxSeleccionados != null
+      && this.maxSeleccionados > 0
+      && this.seleccionados.length >= this.maxSeleccionados;
   }
 
   quitar(id: number): void {

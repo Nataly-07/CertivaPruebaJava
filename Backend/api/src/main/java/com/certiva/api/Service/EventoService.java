@@ -60,6 +60,8 @@ public interface EventoService {
 
     EventoPublicoDTO obtenerPublicoPorCodigoDifusion(String codigoDifusion);
 
+    EventoPublicoDTO obtenerPublicoPorId(Long idEvento);
+
     List<EventoCatalogoPublicoDTO> listarCatalogoPublico();
 
     ProfesorPanelDTO obtenerPanelProfesor();

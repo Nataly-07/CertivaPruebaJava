@@ -59,6 +59,9 @@ public class EventoDTO {
     private Integer intensidadHoraria;
 
     @NotNull
+    private Integer porcentajeAsistenciaMinimo;
+
+    @NotNull
     @PositiveOrZero
     private Double precio;
 
@@ -80,6 +83,12 @@ public class EventoDTO {
     @Size(max = 500)
     private String firmaDigitalProfesor;
 
+    @NotNull
+    private Long idProfesorLider;
+
+    @Size(max = 10000)
+    private String imagenPromocionalUrl;
+
     private Boolean estado;
 
     private EstadoOperativoEvento estadoOperativo;
@@ -93,6 +102,8 @@ public class EventoDTO {
     private List<UsuarioStaffDTO> profesoresColaboradores = new ArrayList<>();
 
     private List<UsuarioStaffDTO> monitoresAsignados = new ArrayList<>();
+
+    private UsuarioStaffDTO profesorLider;
 
     @Valid
     private DetalleCursoDTO detalleCurso;

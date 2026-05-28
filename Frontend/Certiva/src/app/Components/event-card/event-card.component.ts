@@ -1,11 +1,11 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EventoDTO, EventoCupoVerificacionDTO, UsuarioStaffDTO } from '../../Models/evento-dto';
 import { PrecioEventoPipe, PrecioGratuitoPipe } from '../../pipes/precio-evento.pipe';
 import { RolEtiquetaPipe } from '../../pipes/rol-etiqueta.pipe';
 import { etiquetaModalidad, etiquetaTipoEvento } from '../../constants/ui-labels';
-import { environment } from '../../../environments/environment';
+import { resolverUrlImagenEvento, placeholderGradienteTipo } from '../../utils/evento-imagen.util';
 
 @Component({
   selector: 'app-event-card',
@@ -15,6 +15,8 @@ import { environment } from '../../../environments/environment';
   styleUrl: './event-card.component.scss',
 })
 export class EventCardComponent {
+  private router = inject(Router);
+
   @Input({ required: true }) evento!: EventoDTO;
   @Input() cupo: EventoCupoVerificacionDTO | null = null;
   @Input() yaInscrito = false;
@@ -47,25 +49,11 @@ export class EventCardComponent {
   }
 
   imagenUrl(): string | null {
-    const ruta = this.evento.rutaImagenPromocional;
-    if (!ruta?.trim()) {
-      return null;
-    }
-    if (ruta.startsWith('http://') || ruta.startsWith('https://')) {
-      return ruta;
-    }
-    const apiBase = environment.API_URL.replace(/\/api\/?$/, '');
-    return `${apiBase}${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
+    return resolverUrlImagenEvento(this.evento.rutaImagenPromocional);
   }
 
   placeholderGradient(): string {
-    const gradients: Record<string, string> = {
-      CURSO: 'linear-gradient(135deg, #1e3a5f 0%, #3b82f6 100%)',
-      HACKATHON: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%)',
-      TALLER: 'linear-gradient(135deg, #134e4a 0%, #14b8a6 100%)',
-      FERIA: 'linear-gradient(135deg, #78350f 0%, #f59e0b 100%)',
-    };
-    return gradients[this.evento.tipoEvento] ?? gradients['CURSO'];
+    return placeholderGradienteTipo(this.evento.tipoEvento);
   }
 
   staffPrincipal(): UsuarioStaffDTO | null {
@@ -140,6 +128,10 @@ export class EventCardComponent {
       return this.evento.ubicacion ?? 'Presencial + Virtual';
     }
     return this.evento.ubicacion ?? 'Por confirmar';
+  }
+
+  verDetalle(): void {
+    this.router.navigate(['/portal/eventos', this.evento.idEvento]);
   }
 
   horaInicio(): string {
