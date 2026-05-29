@@ -55,9 +55,9 @@ export class Login {
         if (this.authService.isAdmin()) {
           this.router.navigate(['/admin/dashboard']);
         } else if (this.authService.isProfesor()) {
-          this.router.navigate(['/admin/mi-panel']);
+          this.router.navigate(['/profesor/dashboard']);
         } else if (this.authService.isMonitor()) {
-          this.router.navigate(['/admin/check-in']);
+          this.router.navigate(['/monitor/dashboard']);
         } else {
           this.router.navigate(['/portal']);
         }

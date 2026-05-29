@@ -130,7 +130,7 @@ export class MiPanel implements OnInit {
   }
 
   irCrearEvento(): void {
-    this.accionMsg.set('La creación global de eventos la realiza el organizador.');
+    this.router.navigate(['/admin/eventos'], { queryParams: { crear: '1' } });
   }
 
   abrirContenidoAcademico(ev: ProfesorEventoTarjetaDTO): void {

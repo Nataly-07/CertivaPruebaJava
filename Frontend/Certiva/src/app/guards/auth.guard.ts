@@ -10,9 +10,9 @@ function redirigirSegunRol(authService: AuthService, router: Router): void {
   if (authService.isAdmin()) {
     router.navigate(['/admin/dashboard']);
   } else if (authService.isProfesor()) {
-    router.navigate(['/admin/mi-panel']);
+    router.navigate(['/profesor/dashboard']);
   } else if (authService.isMonitor()) {
-    router.navigate(['/admin/check-in']);
+    router.navigate(['/monitor/dashboard']);
   } else {
     router.navigate(['/portal']);
   }

@@ -102,6 +102,24 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
     List<Long> findIdsEventoDondeEsColaborador(@Param("idUsuario") Long idUsuario);
 
     /**
+     * Eventos asignados al profesor: líder ({@code id_creador}) o colaborador ({@code evento_profesores}).
+     */
+    @Query("""
+            SELECT DISTINCT e.idEvento FROM Evento e
+            LEFT JOIN e.profesoresColaboradores p
+            WHERE e.usuarioCreador.idUsuario = :idUsuario
+               OR p.idUsuario = :idUsuario
+            """)
+    List<Long> findIdsEventosGestionadosPorProfesor(@Param("idUsuario") Long idUsuario);
+
+    @Query("""
+            SELECT DISTINCT e.idEvento FROM Evento e
+            JOIN e.monitoresAsignados m
+            WHERE m.idUsuario = :idUsuario
+            """)
+    List<Long> findIdsEventosGestionadosPorMonitor(@Param("idUsuario") Long idUsuario);
+
+    /**
      * Misma carga que {@link #buscarConFiltros}: sin FETCH de colecciones ManyToMany
      * (evita duplicados y errores al hidratar subclases JOINED en el listado admin).
      */

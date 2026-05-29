@@ -1,15 +1,27 @@
 <div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
-  <app-admin-sidebar
-    [collapsed]="sidebarCollapsed"
-    (collapsedChange)="sidebarCollapsed = $event"
-  />
+  @if (authService.isAdmin()) {
+    <app-admin-sidebar
+      [collapsed]="sidebarCollapsed"
+      (collapsedChange)="sidebarCollapsed = $event"
+    />
+  } @else {
+    <app-profesor-sidebar
+      [collapsed]="sidebarCollapsed"
+      (collapsedChange)="sidebarCollapsed = $event"
+    />
+  }
 
   <main class="main-content">
     <div class="main-inner">
     <div class="content-header content-header--dashboard">
       <div>
-        <h1 class="page-title page-title--accent">Gestión de Eventos — Vista del Administrador</h1>
-        <p class="page-subtitle">Filtra por categoría y administra el listado maestro de eventos</p>
+        @if (authService.isAdmin()) {
+          <h1 class="page-title page-title--accent">Gestión de Eventos — Vista del Administrador</h1>
+          <p class="page-subtitle">Filtra por categoría y administra el listado maestro de eventos</p>
+        } @else {
+          <h1 class="page-title page-title--accent">Proponer evento formativo</h1>
+          <p class="page-subtitle">Complete el formulario y use una URL directa a la imagen del banner (JPG, PNG o WebP)</p>
+        }
       </div>
       @if (puedeCrearEditar) {
         <button type="button" class="btn btn-gradient btn-sm" (click)="openCreateModal()">Nuevo evento</button>
@@ -20,7 +32,16 @@
       <div class="alert alert-warning glass-card mb-3 py-2 px-3">{{ errorMsg }}</div>
     }
 
-    @if (authService.isStaff()) {
+    @if (authService.isProfesor() && !authService.isAdmin()) {
+      <div class="glass-card p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <p class="text-secondary mb-0 small">
+          Tras crear el evento, retome la gestión académica desde Mi panel.
+        </p>
+        <a routerLink="/profesor/dashboard" class="btn btn-dark-outline btn-sm">← Volver al panel</a>
+      </div>
+    }
+
+    @if (authService.isAdmin()) {
       <div class="glass-card p-3 mb-3">
         <form [formGroup]="filterForm" class="row g-2 align-items-end">
           <div class="col-md-3 col-lg-2">
@@ -203,7 +224,7 @@
           </table>
         </div>
       </div>
-    } @else {
+    } @else if (!authService.isStaff()) {
       <div class="glass-card p-5 text-center">
         <p class="text-secondary">No tienes permisos para ver esta sección.</p>
       </div>
@@ -383,8 +404,39 @@
                   type="text"
                   class="form-control form-control-dark"
                   formControlName="imagenPromocionalUrl"
-                  placeholder="https://... (S3, Firebase, Drive, etc.)"
+                  placeholder="https://ejemplo.com/ruta/a/imagen"
+                  (input)="onImagenUrlInput('crear')"
                 />
+                <small class="text-muted d-block mt-1">
+                  Pega la URL de la Imagen.
+                </small>
+                @if (campoMuestraError(createForm, 'imagenPromocionalUrl')) {
+                  @if (createForm.get('imagenPromocionalUrl')?.hasError('urlInvalida')) {
+                    <div class="form-hint-subtle text-danger">Indique una URL válida (http:// o https://).</div>
+                  }
+                  @if (createForm.get('imagenPromocionalUrl')?.hasError('urlLarga')) {
+                    <div class="form-hint-subtle text-danger">La URL supera el máximo permitido (10 000 caracteres).</div>
+                  }
+                }
+                @if (previewImagenCrearUrl(); as src) {
+                  <div class="banner-preview mt-2">
+                    @if (!imagenPreviewErrorCrear) {
+                      @for (_ of [imagenPreviewTokenCrear]; track imagenPreviewTokenCrear) {
+                        <img
+                          [src]="src"
+                          alt="Vista previa del banner"
+                          class="banner-preview__img"
+                          referrerpolicy="no-referrer"
+                          (error)="onPreviewImagenError('crear')"
+                        />
+                      }
+                    } @else {
+                      <p class="banner-preview__error text-warning small mb-0">
+                        No se pudo cargar la imagen. Verifique que la URL sea pública y apunte al archivo de imagen.
+                      </p>
+                    }
+                  </div>
+                }
               }
             </div>
             <div class="col-md-6">
@@ -844,10 +896,46 @@
                 type="text"
                 class="form-control form-control-dark"
                 formControlName="imagenPromocionalUrl"
-                placeholder="https://... (S3, Firebase, Drive, etc.)"
+                placeholder="https://ejemplo.com/ruta/a/imagen"
+                (input)="onImagenUrlInput('edit')"
               />
+              <small class="text-muted d-block mt-1">
+                Enlace público http(s); no se exige extensión al final. Si deja el campo vacío se conserva la imagen actual.
+              </small>
+              @if (campoMuestraError(editForm, 'imagenPromocionalUrl')) {
+                @if (editForm.get('imagenPromocionalUrl')?.hasError('urlInvalida')) {
+                  <div class="form-hint-subtle text-danger">Indique una URL válida (http:// o https://).</div>
+                }
+                @if (editForm.get('imagenPromocionalUrl')?.hasError('urlLarga')) {
+                  <div class="form-hint-subtle text-danger">La URL supera el máximo permitido (10 000 caracteres).</div>
+                }
+              }
+              @if (previewImagenEditUrl(); as src) {
+                <div class="banner-preview mt-2">
+                  @if (!imagenPreviewErrorEdit) {
+                    @for (_ of [imagenPreviewTokenEdit]; track imagenPreviewTokenEdit) {
+                      <img
+                        [src]="src"
+                        alt="Vista previa del banner"
+                        class="banner-preview__img"
+                        referrerpolicy="no-referrer"
+                        (error)="onPreviewImagenError('edit')"
+                      />
+                    }
+                  } @else {
+                    <p class="banner-preview__error text-warning small mb-0">
+                      No se pudo cargar la imagen. Verifique que la URL sea pública y apunte al archivo de imagen.
+                    </p>
+                  }
+                </div>
+              }
             } @else {
               <small class="text-muted">Se conserva la imagen registrada actualmente.</small>
+              @if (resolverUrlImagenEditActual(); as srcActual) {
+                <div class="banner-preview mt-2">
+                  <img [src]="srcActual" alt="Banner actual" class="banner-preview__img" />
+                </div>
+              }
             }
           </div>
           </section>

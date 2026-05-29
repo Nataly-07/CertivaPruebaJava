@@ -1,0 +1,241 @@
+<div class="prof-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-profesor-sidebar [collapsed]="sidebarCollapsed" (collapsedChange)="sidebarCollapsed = $event" />
+
+  <main class="prof-main">
+    <header class="prof-header">
+      <div class="prof-header__text">
+        <span class="prof-header__kicker">Perfil del profesor</span>
+        <h1 class="prof-header__title">Certiva: Profesor {{ nombreProfesor() }}</h1>
+        <p class="prof-header__welcome">Bienvenido, {{ nombreProfesor() }}</p>
+      </div>
+      <div class="prof-header__actions">
+        <button type="button" class="btn btn-gold btn-sm btn-with-icon" (click)="irProponerEvento()">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          <span>Proponer evento</span>
+        </button>
+      </div>
+    </header>
+
+    @if (loading()) {
+      <p class="prof-loading">Cargando panel…</p>
+    } @else if (errorMsg()) {
+      <div class="prof-alert prof-alert--warn">{{ errorMsg() }}</div>
+    } @else if (panel(); as p) {
+      @if (accionMsg()) {
+        <div class="prof-alert prof-alert--info">{{ accionMsg() }}</div>
+      }
+
+      @if (vista() === 'dashboard') {
+        <section class="prof-kpi-row" aria-label="Indicadores">
+          <article class="prof-kpi">
+            <div class="prof-kpi__icon prof-kpi__icon--indigo">
+              <i class="bi bi-collection" aria-hidden="true"></i>
+            </div>
+            <div>
+              <span class="prof-kpi__value">{{ p.eventosActivos | number: '2.0-0' }}</span>
+              <span class="prof-kpi__label">Eventos activos</span>
+              <span class="prof-kpi__sub">Cursos en ciclo</span>
+            </div>
+          </article>
+          <article class="prof-kpi">
+            <div class="prof-kpi__icon prof-kpi__icon--cyan">
+              <i class="bi bi-people" aria-hidden="true"></i>
+            </div>
+            <div>
+              <span class="prof-kpi__value">{{ p.totalInscritos }}</span>
+              <span class="prof-kpi__label">Alumnos a cargo</span>
+              <span class="prof-kpi__sub">Estudiantes inscritos</span>
+            </div>
+          </article>
+          <article class="prof-kpi">
+            <div class="prof-kpi__icon prof-kpi__icon--amber">
+              <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+            </div>
+            <div>
+              <span class="prof-kpi__value">{{ p.asistenciaGlobalPromedio ?? 0 | number: '1.1-1' }}%</span>
+              <span class="prof-kpi__label">Asistencia global</span>
+              <span class="prof-kpi__sub">Promedio de cursos activos</span>
+            </div>
+          </article>
+        </section>
+      }
+
+      <section class="prof-cursos-panel">
+        <header class="prof-cursos-panel__head">
+          <h2>{{ tituloSeccion() }}</h2>
+          @if (vista() === 'historial') {
+            <span class="prof-cursos-panel__hint">Solo lectura — eventos ya clausurados</span>
+          }
+        </header>
+
+        @if (cursosVisibles().length === 0) {
+          <p class="prof-empty">No hay cursos en esta sección.</p>
+        } @else {
+          <div class="prof-cursos-table-wrap">
+            <table class="prof-cursos-table">
+              <thead>
+                <tr>
+                  <th>Curso</th>
+                  <th>Progreso</th>
+                  <th>Estado</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (ev of cursosVisibles(); track ev.idEvento) {
+                  <tr>
+                    <td>
+                      <div class="curso-cell">
+                        <span class="curso-cell__tipo">{{ etiquetaTipo(ev.tipoEvento) }}</span>
+                        <strong class="curso-cell__nombre">{{ ev.nombreEvento }}</strong>
+                        <span class="curso-cell__meta">{{ ev.inscritosActivos }} inscritos · Monitor: {{ ev.monitorNombre || '—' }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="progreso-text">{{ textoProgreso(ev) }}</span>
+                    </td>
+                    <td>
+                      <span class="estado-badge" [ngClass]="claseBadge(ev)">{{ etiquetaEstado(ev.estadoOperativo) }}</span>
+                    </td>
+                    <td class="acciones-cell">
+                      @if (vista() !== 'historial') {
+                        <button type="button" class="btn btn-matriz btn-with-icon" (click)="abrirMatriz(ev)">
+                          <i class="bi bi-table" aria-hidden="true"></i>
+                          <span>Matriz</span>
+                        </button>
+                        @if (puedeClausurar(ev)) {
+                          <button
+                            type="button"
+                            class="btn btn-clausurar btn-with-icon"
+                            [disabled]="accionandoId() === ev.idEvento"
+                            (click)="clausurarDesdeFila(ev)"
+                          >
+                            <i class="bi bi-patch-check" aria-hidden="true"></i>
+                            <span>Clausurar</span>
+                          </button>
+                        } @else {
+                          <button type="button" class="btn btn-clausurar btn-clausurar--disabled btn-with-icon" disabled>
+                            <i class="bi bi-patch-check" aria-hidden="true"></i>
+                            <span>Clausurar</span>
+                          </button>
+                        }
+                      } @else {
+                        <span class="text-muted small">Certificados emitidos</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+  </main>
+
+  @if (drawerAbierto()) {
+    <div class="prof-drawer-backdrop" (click)="cerrarDrawer()"></div>
+    <aside class="prof-drawer" role="dialog" aria-labelledby="matriz-title">
+      <header class="prof-drawer__head">
+        <div>
+          <h2 id="matriz-title">Matriz de asistencia QR</h2>
+          <p class="prof-drawer__sub">{{ cursoSeleccionado()?.nombreEvento }}</p>
+        </div>
+        <button type="button" class="prof-drawer__close" (click)="cerrarDrawer()" aria-label="Cerrar">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      @if (drawerCargando() && !matriz()) {
+        <p class="prof-drawer__loading">Cargando estudiantes…</p>
+      } @else if (matriz(); as m) {
+        <div class="prof-drawer__stats">
+          <span>{{ m.asistenciasConfirmadas }} / {{ m.totalInscritos }} check-ins</span>
+          <span>Clase {{ m.sesionActual ?? 0 }} de {{ m.sesionesTotales ?? 1 }}</span>
+          <span>Mín. asistencia: {{ umbralAsistencia() }}%</span>
+          <button type="button" class="btn btn-ghost btn-sm btn-with-icon" (click)="refrescarMatriz()">
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+            <span>Actualizar</span>
+          </button>
+        </div>
+
+        <div class="prof-drawer__table-wrap">
+          <table class="prof-matriz-table">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Check-ins</th>
+                <th>% Asist.</th>
+                <th>Elegibilidad</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (al of m.alumnos; track al.idInscripcion) {
+                <tr [class.row-elegible]="esElegible(al)" [class.row-no-califica]="!esElegible(al)">
+                  <td>
+                    <strong>{{ al.nombres }} {{ al.apellidos }}</strong>
+                    <div class="small text-muted">{{ al.correo }}</div>
+                  </td>
+                  <td>{{ al.checkInsAcumulados ?? 0 }} / {{ al.sesionesTotales ?? m.sesionesTotales ?? 1 }}</td>
+                  <td>{{ al.porcentajeAsistencia }}%</td>
+                  <td>
+                    @if (esElegible(al)) {
+                      <span class="badge-elegible">
+                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                        Elegible
+                      </span>
+                    } @else {
+                      <span class="badge-no-califica">
+                        <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+                        No califica
+                      </span>
+                    }
+                  </td>
+                  <td>
+                    @if (!esElegible(al) && vista() !== 'historial') {
+                      <button
+                        type="button"
+                        class="btn btn-justificar btn-sm btn-with-icon"
+                        [disabled]="justificandoId() === al.idInscripcion"
+                        (click)="justificarAsistencia(al)"
+                      >
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                        <span>Justificar</span>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="prof-drawer__foot">
+          <button type="button" class="btn btn-ghost" (click)="cerrarDrawer()">Cerrar</button>
+          @if (m.listoParaClausurar) {
+            <button
+              type="button"
+              class="btn btn-clausurar btn-clausurar--large btn-with-icon"
+              [disabled]="accionandoId() !== null"
+              (click)="confirmarClausura()"
+            >
+              <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
+              <span>Clausurar curso</span>
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="btn btn-clausurar btn-clausurar--disabled btn-with-icon"
+              disabled
+              title="Disponible cuando el curso esté Por certificar y las sesiones estén completas"
+            >
+              <i class="bi bi-patch-check" aria-hidden="true"></i>
+              <span>Clausurar curso</span>
+            </button>
+          }
+        </footer>
+      }
+    </aside>
+  }
+</div>

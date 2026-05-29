@@ -44,6 +44,7 @@ export class EventosDisponibles implements OnInit {
 
   favoritos = new Set<number>();
   inscritosIds = new Set<number>();
+  private imagenesFallidas = new Set<number>();
   loading = true;
   errorMsg: string | null = null;
 
@@ -196,7 +197,14 @@ export class EventosDisponibles implements OnInit {
   }
 
   imagenEvento(evento: EventoPublico): string | null {
+    if (this.imagenesFallidas.has(evento.idEvento)) {
+      return null;
+    }
     return resolverUrlImagenEvento(evento.rutaImagenPromocional);
+  }
+
+  onImagenEventoError(idEvento: number): void {
+    this.imagenesFallidas.add(idEvento);
   }
 
   placeholderTipo(tipo: TipoEventoEnum): string {

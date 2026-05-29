@@ -20,6 +20,7 @@ import {
   EventoContenidoAcademicoDTO,
   EventoRevisionPanelDTO,
   GuardarEventoContenidoAcademicoDTO,
+  MonitorPanelDTO,
   ProfesorPanelDTO,
   ProfesorParticipanteDTO,
 } from '../Models/portal-dto';
@@ -158,6 +159,10 @@ export class EventoService {
     return this.http.get<ProfesorPanelDTO>(`${this.baseUrl}/mi-panel`);
   }
 
+  obtenerPanelMonitor(): Observable<MonitorPanelDTO> {
+    return this.http.get<MonitorPanelDTO>(`${this.baseUrl}/mi-panel-monitor`);
+  }
+
   obtenerRevisionCierre(idEvento: number): Observable<EventoRevisionPanelDTO> {
     return this.http.get<EventoRevisionPanelDTO>(`${this.baseUrl}/mi-panel/revision/${idEvento}`);
   }
@@ -210,6 +215,11 @@ export class EventoService {
 
   cerrarYCertificar(id: number): Observable<EventoCierreResultadoDTO> {
     return this.http.post<EventoCierreResultadoDTO>(`${this.baseUrl}/${id}/cerrar-y-certificar`, {});
+  }
+
+  /** Clausura inmutable (alias del backend). */
+  clausurar(id: number): Observable<EventoCierreResultadoDTO> {
+    return this.http.post<EventoCierreResultadoDTO>(`${this.baseUrl}/${id}/clausurar`, {});
   }
 
   forzarCierre(id: number): Observable<EventoCierreResultadoDTO> {

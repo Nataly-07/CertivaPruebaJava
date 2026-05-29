@@ -80,7 +80,14 @@
           >
             <div class="event-card__banner">
               @if (imagenEvento(evento); as src) {
-                <img class="event-card__banner-img" [src]="src" [alt]="evento.nombreEvento" loading="lazy" />
+                <img
+                  class="event-card__banner-img"
+                  [src]="src"
+                  [alt]="evento.nombreEvento"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  (error)="onImagenEventoError(evento.idEvento)"
+                />
               } @else {
                 <div
                   class="event-card__banner-placeholder"

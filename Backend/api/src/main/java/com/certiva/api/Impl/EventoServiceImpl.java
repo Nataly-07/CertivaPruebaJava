@@ -54,6 +54,8 @@ import com.certiva.api.DTO.ProfesorAlumnoAsistenciaDTO;
 import com.certiva.api.DTO.ProfesorParticipanteDTO;
 import com.certiva.api.DTO.RecursoAcademicoDTO;
 import com.certiva.api.DTO.RespuestaCampoDTO;
+import com.certiva.api.DTO.MonitorEventoTarjetaDTO;
+import com.certiva.api.DTO.MonitorPanelDTO;
 import com.certiva.api.DTO.ProfesorEventoTarjetaDTO;
 import com.certiva.api.DTO.ProfesorPanelBannerDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
@@ -61,7 +63,9 @@ import com.certiva.api.DTO.ReasignarStaffDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO.ProfesorEventoResumenDTO;
 import com.certiva.api.Service.CertificadoElegibilidadService;
 import com.certiva.api.Util.ProfesorAsistenciaHelper;
+import com.certiva.api.Util.MonitorEventoAccessHelper;
 import com.certiva.api.Util.ProfesorEventoAccessHelper;
+import com.certiva.api.enums.MonitorNivelAlerta;
 import com.certiva.api.Entity.RespuestaFormulario;
 import com.certiva.api.Entity.CampoFormulario;
 import com.certiva.api.Entity.CursoEvento;
@@ -85,6 +89,7 @@ import com.certiva.api.Entity.ResultadoEvaluacion;
 import com.certiva.api.Service.AuditoriaService;
 import com.certiva.api.Service.EventoService;
 import com.certiva.api.Util.EventoArchivoStorage;
+import com.certiva.api.Util.ImagenPromocionalHelper;
 import com.certiva.api.Util.EventoEdicionPolicy;
 import com.certiva.api.Util.EventoMapper;
 import com.certiva.api.Util.EventoAsistenciaHelper;
@@ -159,9 +164,9 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public EventoDTO crearEvento(CrearEventoDTO dto, MultipartFile imagen, MultipartFile pensum) {
-        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+        if (!EventoEdicionPolicy.puedeCrearEventoGlobal()) {
             throw new OperacionNoPermitidaException(
-                    "Solo el organizador (administrador) puede crear eventos globales.");
+                    "Solo el organizador o un profesor pueden crear eventos.");
         }
         validarFechas(dto.getFechaInicio(), dto.getFechaFin(), true);
         validarDetallePorTipo(dto);
@@ -182,7 +187,8 @@ public class EventoServiceImpl implements EventoService {
         if (imagen != null && !imagen.isEmpty()) {
             evento.setRutaImagenPromocional(_archivoStorage.guardarImagen(imagen));
         } else if (dto.getImagenPromocionalUrl() != null && !dto.getImagenPromocionalUrl().isBlank()) {
-            evento.setRutaImagenPromocional(dto.getImagenPromocionalUrl().trim());
+            evento.setRutaImagenPromocional(
+                    ImagenPromocionalHelper.normalizar(dto.getImagenPromocionalUrl()));
         }
         if (pensum != null && !pensum.isEmpty()) {
             evento.setRutaPensum(_archivoStorage.guardarPensum(pensum));
@@ -374,10 +380,10 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public EventoDTO actualizarEvento(EventoDTO dto) {
-        if (!EventoEdicionPolicy.esAdminAutenticado()) {
+        if (!EventoEdicionPolicy.puedeEditarConfiguracionGlobal()) {
             throw new OperacionNoPermitidaException(
-                    "Solo el organizador puede modificar la configuración global del evento. "
-                            + "Use el panel de profesor para el contenido académico de eventos asignados.");
+                    "Solo el organizador o un profesor asignado pueden modificar la configuración del evento. "
+                            + "Use el panel de profesor para el contenido académico si no tiene permiso de edición global.");
         }
         if (dto.getIdEvento() == null) {
             throw new OperacionNoPermitidaException("El id del evento es obligatorio para actualizar.");
@@ -394,6 +400,9 @@ public class EventoServiceImpl implements EventoService {
 
         Usuario editor = usuarioActualDesdeSeguridad();
         boolean esAdmin = EventoEdicionPolicy.esAdminAutenticado();
+        if (!esAdmin) {
+            ProfesorEventoAccessHelper.asegurarGestionEvento(evento, editor);
+        }
         EventoEdicionPolicy.validarEdicion(evento, dto, esAdmin);
 
         if (esAdmin && evento.getEstadoOperativo() == EstadoOperativoEvento.EN_CURSO) {
@@ -425,7 +434,8 @@ public class EventoServiceImpl implements EventoService {
             evento.setPorcentajeAsistenciaMinimo(dto.getPorcentajeAsistenciaMinimo());
         }
         if (dto.getImagenPromocionalUrl() != null && !dto.getImagenPromocionalUrl().isBlank()) {
-            evento.setRutaImagenPromocional(dto.getImagenPromocionalUrl().trim());
+            evento.setRutaImagenPromocional(
+                    ImagenPromocionalHelper.normalizar(dto.getImagenPromocionalUrl()));
         }
         if (dto.getEstado() != null) {
             evento.setEstado(dto.getEstado());
@@ -669,6 +679,8 @@ public class EventoServiceImpl implements EventoService {
         long totalInscritos = 0;
         long activos = 0;
         long eventosPorCertificar = 0;
+        int sumaAsistenciaGlobal = 0;
+        int cursosConAsistencia = 0;
         List<ProfesorEventoResumenDTO> resumenes = new ArrayList<>();
         List<ProfesorEventoTarjetaDTO> enCurso = new ArrayList<>();
         List<ProfesorEventoTarjetaDTO> pendientesCierre = new ArrayList<>();
@@ -698,6 +710,11 @@ public class EventoServiceImpl implements EventoService {
             ProfesorEventoTarjetaDTO tarjeta = construirTarjetaProfesor(cargarMonitoresSiFalta(e), op, inscritos, asistencias, ahora);
             clasificarTarjeta(tarjeta, op, enCurso, pendientesCierre, historial);
 
+            if (op == EstadoOperativoEvento.EN_CURSO || op == EstadoOperativoEvento.PROXIMO) {
+                sumaAsistenciaGlobal += tarjeta.getPorcentajeAsistenciaGlobal();
+                cursosConAsistencia++;
+            }
+
             if (op == EstadoOperativoEvento.EN_CURSO && esSesionHoy(e, hoy) && !banner.isSesionActivaHoy()) {
                 Usuario monitor = primerMonitor(cargarMonitoresSiFalta(e));
                 banner = ProfesorPanelBannerDTO.builder()
@@ -723,17 +740,111 @@ public class EventoServiceImpl implements EventoService {
                     .build());
         }
 
+        int asistenciaGlobalPromedio = cursosConAsistencia > 0
+                ? Math.round((float) sumaAsistenciaGlobal / cursosConAsistencia)
+                : 0;
+
         return ProfesorPanelDTO.builder()
                 .totalEventos(eventos.size())
                 .totalInscritos(totalInscritos)
                 .eventosActivos(activos)
                 .eventosPorCertificar(eventosPorCertificar)
                 .accionesPendientes(eventosPorCertificar)
+                .asistenciaGlobalPromedio(asistenciaGlobalPromedio)
                 .banner(banner)
                 .enCurso(enCurso)
                 .pendientesCierre(pendientesCierre)
                 .historial(historial)
                 .eventos(resumenes)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MonitorPanelDTO obtenerPanelMonitor() {
+        asegurarRolMonitor();
+        Usuario monitor = _securityUsuarioHelper.usuarioAutenticado();
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDate hoy = ahora.toLocalDate();
+        List<Evento> asignados = listarEventosGestionadosPorMonitor(monitor.getIdUsuario());
+
+        int salonesTotales = 0;
+        int salonesOcupados = 0;
+        long checkInConfirmados = 0;
+        long checkInEsperados = 0;
+        int alertasCriticas = 0;
+        int alertasAdvertencia = 0;
+        List<MonitorEventoTarjetaDTO> tarjetas = new ArrayList<>();
+
+        for (Evento e : asignados) {
+            EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(e, ahora);
+            if (op == EstadoOperativoEvento.CERRADO_Y_CERTIFICADO
+                    || op == EstadoOperativoEvento.EVENT_CANCELLED) {
+                continue;
+            }
+            if (!eventoVisibleEnPanelMonitorHoy(e, hoy)) {
+                continue;
+            }
+
+            Evento cargado = cargarMonitoresSiFalta(cargarProfesorLiderSiFalta(e));
+            long inscritos = _inscripcionRepository.countCuposOcupadosPorEvento(cargado.getIdEvento());
+            long asistencias = _inscripcionRepository.countAsistenciasConfirmadasPorEvento(cargado.getIdEvento());
+            int pctCheckIn = ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscritos);
+            Long minutosHastaFin = calcularMinutosHastaFin(cargado.getFechaFin(), ahora);
+            MonitorNivelAlerta nivel = calcularNivelAlertaMonitor(op, pctCheckIn, minutosHastaFin);
+
+            salonesTotales++;
+            if (op == EstadoOperativoEvento.EN_CURSO) {
+                salonesOcupados++;
+            }
+            checkInConfirmados += asistencias;
+            checkInEsperados += inscritos;
+            if (nivel == MonitorNivelAlerta.CRITICO) {
+                alertasCriticas++;
+            } else if (nivel == MonitorNivelAlerta.ADVERTENCIA) {
+                alertasAdvertencia++;
+            }
+
+            Usuario profesor = cargado.getUsuarioCreador();
+            int sesionesTotales = ProfesorAsistenciaHelper.sesionesTotales(cargado);
+            int sesionActual = ProfesorAsistenciaHelper.sesionActualEvento(cargado, ahora);
+
+            tarjetas.add(MonitorEventoTarjetaDTO.builder()
+                    .idEvento(cargado.getIdEvento())
+                    .nombreEvento(cargado.getNombreEvento())
+                    .tipoEvento(cargado.getTipoEvento() != null ? cargado.getTipoEvento().name() : null)
+                    .ubicacion(cargado.getUbicacion())
+                    .estadoOperativo(op)
+                    .nivelAlerta(nivel)
+                    .inscritosActivos(inscritos)
+                    .asistenciasConfirmadas(asistencias)
+                    .porcentajeCheckIn(pctCheckIn)
+                    .sesionesTotales(sesionesTotales)
+                    .sesionActual(sesionActual)
+                    .minutosHastaFin(minutosHastaFin)
+                    .profesorNombre(profesor != null ? profesor.getNombres() : null)
+                    .profesorApellidos(profesor != null ? profesor.getApellidos() : null)
+                    .profesorCorreo(profesor != null ? profesor.getCorreo() : null)
+                    .fechaInicio(cargado.getFechaInicio())
+                    .fechaFin(cargado.getFechaFin())
+                    .permiteAbrirCheckIn(op == EstadoOperativoEvento.PROXIMO || op == EstadoOperativoEvento.EN_CURSO)
+                    .sesionHoy(esSesionHoy(cargado, hoy))
+                    .build());
+        }
+
+        tarjetas.sort(Comparator
+                .comparing((MonitorEventoTarjetaDTO t) -> ordenAlerta(t.getNivelAlerta()))
+                .thenComparing(MonitorEventoTarjetaDTO::getFechaInicio, Comparator.nullsLast(Comparator.naturalOrder())));
+
+        return MonitorPanelDTO.builder()
+                .eventosHoy(tarjetas.size())
+                .salonesOcupados(salonesOcupados)
+                .salonesTotales(salonesTotales)
+                .checkInConfirmados(checkInConfirmados)
+                .checkInEsperados(checkInEsperados)
+                .alertasCriticas(alertasCriticas)
+                .alertasAdvertencia(alertasAdvertencia)
+                .eventos(tarjetas)
                 .build();
     }
 
@@ -791,17 +902,20 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional(readOnly = true)
     public EventoAsistenciaEnVivoDTO obtenerAsistenciaEnVivo(Long idEvento) {
-        asegurarRolCrearEditar();
-        Usuario profesor = _securityUsuarioHelper.usuarioAutenticado();
+        asegurarRolVerAsistenciaEnVivo();
+        Usuario usuario = _securityUsuarioHelper.usuarioAutenticado();
         Evento evento = _eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento no encontrado"));
-        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, profesor);
+        asegurarAccesoEventoPanel(evento, usuario);
 
         LocalDateTime ahora = LocalDateTime.now();
         EstadoOperativoEvento op = EstadoOperativoEventoHelper.resolverOperativoVisible(evento, ahora);
-        if (op != EstadoOperativoEvento.PROXIMO && op != EstadoOperativoEvento.EN_CURSO) {
+        if (op != EstadoOperativoEvento.PROXIMO
+                && op != EstadoOperativoEvento.EN_CURSO
+                && op != EstadoOperativoEvento.EN_REVISION
+                && op != EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
             throw new OperacionNoPermitidaException(
-                    "La asistencia en vivo solo está disponible para eventos próximos o en curso.");
+                    "La matriz de asistencia no está disponible para el estado actual del evento.");
         }
 
         List<Inscripcion> inscripciones = _inscripcionRepository.findActivasPorEventoConUsuario(idEvento);
@@ -809,6 +923,14 @@ public class EventoServiceImpl implements EventoService {
                 .map(ins -> construirAlumnoAsistencia(ins, evento, ahora))
                 .toList();
         long asistencias = _inscripcionRepository.countAsistenciasConfirmadasPorEvento(idEvento);
+        int sesionesTotales = ProfesorAsistenciaHelper.sesionesTotales(evento);
+        int sesionActual = ProfesorAsistenciaHelper.sesionActualEvento(evento, ahora);
+        if (op == EstadoOperativoEvento.EN_REVISION || op == EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
+            sesionActual = sesionesTotales;
+        }
+        int pctMin = EventoAsistenciaHelper.resolverPorcentajeMinimo(evento);
+        boolean listoParaClausurar = op == EstadoOperativoEvento.EN_REVISION
+                && sesionActual >= sesionesTotales && sesionesTotales > 0;
 
         return EventoAsistenciaEnVivoDTO.builder()
                 .idEvento(idEvento)
@@ -820,6 +942,10 @@ public class EventoServiceImpl implements EventoService {
                         ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscripciones.size()))
                 .asistenciaPromedioSesionHoy(
                         ProfesorAsistenciaHelper.porcentajeAsistenciaGlobal(asistencias, inscripciones.size()))
+                .sesionesTotales(sesionesTotales)
+                .sesionActual(sesionActual)
+                .porcentajeAsistenciaMinimo(pctMin)
+                .listoParaClausurar(listoParaClausurar)
                 .alumnos(alumnos)
                 .build();
     }
@@ -1043,8 +1169,8 @@ public class EventoServiceImpl implements EventoService {
             Inscripcion ins, Evento evento, LocalDateTime ahora) {
         Usuario u = ins.getUsuario();
         boolean asistio = InscripcionEstadoHelper.tieneAsistenciaConfirmada(ins.getEstado());
-        int sesionesTotales = Math.max(1, evento.getIntensidadHoraria() != null ? evento.getIntensidadHoraria() : 1);
-        int checkInsAcumulados = asistio ? 1 : 0;
+        int sesionesTotales = ProfesorAsistenciaHelper.sesionesTotales(evento);
+        int checkInsAcumulados = asistio ? sesionesTotales : ProfesorAsistenciaHelper.sesionActualEvento(evento, ahora) > 0 ? 1 : 0;
         return ProfesorAlumnoAsistenciaDTO.builder()
                 .idInscripcion(ins.getIdInscripcion())
                 .nombres(u.getNombres())
@@ -1074,16 +1200,135 @@ public class EventoServiceImpl implements EventoService {
     }
 
     /**
+     * Líder ({@code id_creador}) y colaboradores ({@code evento_profesores}).
      * Evita MultipleBagFetchException: no hace JOIN FETCH de dos colecciones ManyToMany a la vez.
      */
     private List<Evento> listarEventosGestionadosPorProfesor(Long idProfesor) {
         Map<Long, Evento> porId = new LinkedHashMap<>();
-        for (Long idEvento : _eventoRepository.findIdsEventoDondeEsColaborador(idProfesor)) {
+        for (Long idEvento : _eventoRepository.findIdsEventosGestionadosPorProfesor(idProfesor)) {
             _eventoRepository.findById(idEvento).ifPresent(ev -> porId.put(idEvento, ev));
         }
         return porId.values().stream()
                 .sorted(Comparator.comparing(Evento::getFechaInicio, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
+    }
+
+    private List<Evento> listarEventosGestionadosPorMonitor(Long idMonitor) {
+        Map<Long, Evento> porId = new LinkedHashMap<>();
+        for (Long idEvento : _eventoRepository.findIdsEventosGestionadosPorMonitor(idMonitor)) {
+            _eventoRepository.findById(idEvento).ifPresent(ev -> porId.put(idEvento, ev));
+        }
+        return porId.values().stream()
+                .sorted(Comparator.comparing(Evento::getFechaInicio, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private Evento cargarProfesorLiderSiFalta(Evento evento) {
+        if (evento.getUsuarioCreador() != null) {
+            return evento;
+        }
+        return _eventoRepository.findByIdConProfesores(evento.getIdEvento()).orElse(evento);
+    }
+
+    private static boolean eventoVisibleEnPanelMonitorHoy(Evento e, LocalDate hoy) {
+        if (esSesionHoy(e, hoy)) {
+            return true;
+        }
+        if (e.getFechaInicio() != null && e.getFechaInicio().toLocalDate().equals(hoy)) {
+            return true;
+        }
+        if (e.getFechaFin() != null && e.getFechaFin().toLocalDate().equals(hoy)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static Long calcularMinutosHastaFin(LocalDateTime fechaFin, LocalDateTime ahora) {
+        if (fechaFin == null || !fechaFin.isAfter(ahora)) {
+            return null;
+        }
+        return java.time.Duration.between(ahora, fechaFin).toMinutes();
+    }
+
+    private static MonitorNivelAlerta calcularNivelAlertaMonitor(
+            EstadoOperativoEvento op, int pctCheckIn, Long minutosHastaFin) {
+        if (op == EstadoOperativoEvento.EN_CURSO) {
+            boolean urgente = minutosHastaFin != null && minutosHastaFin <= 45;
+            if (pctCheckIn < 70 || (urgente && pctCheckIn < 85)) {
+                return MonitorNivelAlerta.CRITICO;
+            }
+            if (pctCheckIn < 85) {
+                return MonitorNivelAlerta.ADVERTENCIA;
+            }
+            return MonitorNivelAlerta.NORMAL;
+        }
+        if (op == EstadoOperativoEvento.PROXIMO) {
+            return MonitorNivelAlerta.ADVERTENCIA;
+        }
+        return MonitorNivelAlerta.NORMAL;
+    }
+
+    private static int ordenAlerta(MonitorNivelAlerta nivel) {
+        if (nivel == null) {
+            return 2;
+        }
+        return switch (nivel) {
+            case CRITICO -> 0;
+            case ADVERTENCIA -> 1;
+            default -> 2;
+        };
+    }
+
+    private void asegurarAccesoEventoPanel(Evento evento, Usuario usuario) {
+        if (EventoEdicionPolicy.esAdminAutenticado()) {
+            return;
+        }
+        if (usuarioTieneRolMonitor()) {
+            MonitorEventoAccessHelper.asegurarMonitorEvento(cargarMonitoresSiFalta(evento), usuario);
+            return;
+        }
+        cargarStaffParaValidacion(evento);
+        ProfesorEventoAccessHelper.asegurarGestionEvento(evento, usuario);
+    }
+
+    private void asegurarRolMonitor() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new OperacionNoPermitidaException("Debe iniciar sesión para esta operación.");
+        }
+        boolean permitido = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(r -> "ROLE_ADMIN".equals(r) || "ROLE_MONITOR".equals(r));
+        if (!permitido) {
+            throw new OperacionNoPermitidaException("Solo ADMIN o MONITOR pueden acceder al panel operativo.");
+        }
+    }
+
+    private void asegurarRolVerAsistenciaEnVivo() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new OperacionNoPermitidaException("Debe iniciar sesión para esta operación.");
+        }
+        boolean permitido = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(r -> "ROLE_ADMIN".equals(r) || "ROLE_PROFESOR".equals(r) || "ROLE_MONITOR".equals(r));
+        if (!permitido) {
+            throw new OperacionNoPermitidaException("No tiene permiso para ver la matriz de asistencia.");
+        }
+    }
+
+    private boolean usuarioTieneRolMonitor() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        boolean esMonitor = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_MONITOR"::equals);
+        boolean esProfesor = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_PROFESOR"::equals);
+        return esMonitor && !esProfesor;
     }
 
     private Evento cargarMonitoresSiFalta(Evento evento) {
@@ -1105,6 +1350,16 @@ public class EventoServiceImpl implements EventoService {
             long asistencias,
             LocalDateTime ahora) {
         Usuario monitor = primerMonitor(e);
+        int sesionesTotales = ProfesorAsistenciaHelper.sesionesTotales(e);
+        int sesionActual = ProfesorAsistenciaHelper.sesionActualEvento(e, ahora);
+        if (op == EstadoOperativoEvento.EN_REVISION || op == EstadoOperativoEvento.FINALIZADO_POR_TIEMPO) {
+            sesionActual = sesionesTotales;
+        }
+        int pctMin = EventoAsistenciaHelper.resolverPorcentajeMinimo(e);
+        boolean listoParaClausurar = op == EstadoOperativoEvento.EN_REVISION
+                && sesionActual >= sesionesTotales
+                && sesionesTotales > 0;
+
         return ProfesorEventoTarjetaDTO.builder()
                 .idEvento(e.getIdEvento())
                 .nombreEvento(e.getNombreEvento())
@@ -1118,6 +1373,10 @@ public class EventoServiceImpl implements EventoService {
                 .monitorNombre(monitor != null ? monitor.getNombres() : null)
                 .monitorApellidos(monitor != null ? monitor.getApellidos() : null)
                 .requiereIniciarRevision(op == EstadoOperativoEvento.FINALIZADO_POR_TIEMPO)
+                .sesionesTotales(sesionesTotales)
+                .sesionActual(sesionActual)
+                .porcentajeAsistenciaMinimo(pctMin)
+                .listoParaClausurar(listoParaClausurar)
                 .build();
     }
 

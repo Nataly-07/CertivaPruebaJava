@@ -13,7 +13,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { startWith } from 'rxjs';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../Services/auth.service';
 import { EventoService, ListarEventosFiltros } from '../../../Services/evento.service';
 import {
@@ -42,9 +42,18 @@ import {
 } from '../../../constants/ui-labels';
 import { etiquetaEstadoEvento, EstadoOperativoEvento, ETIQUETAS_ESTADO_EVENTO } from '../../../constants/estado-evento';
 import { TARJETAS_TIPO_EVENTO, TarjetaTipoEventoConfig } from '../../../constants/evento-tipo-cards';
-import { URL_MAX_LENGTH, urlFlexibleValidator } from '../../../validators/url.validators';
+import {
+  URL_MAX_LENGTH,
+  urlFlexibleValidator,
+  urlImagenPromocionalValidator,
+} from '../../../validators/url.validators';
 import { etiquetaPrecioFormulario } from '../../../utils/currency.util';
+import {
+  normalizarUrlImagenParaGuardar,
+  resolverUrlImagenEvento,
+} from '../../../utils/evento-imagen.util';
 import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-sidebar.component';
+import { ProfesorSidebarComponent } from '../../../Components/profesor-sidebar/profesor-sidebar.component';
 
 @Component({
   selector: 'app-eventos',
@@ -57,6 +66,8 @@ import { AdminSidebarComponent } from '../../../Components/admin-sidebar/admin-s
     StackTagsPickerComponent,
     QrCodeDisplayComponent,
     AdminSidebarComponent,
+    ProfesorSidebarComponent,
+    RouterLink,
   ],
   templateUrl: './eventos.html',
   styleUrl: './eventos.scss',
@@ -98,6 +109,10 @@ export class Eventos implements OnInit {
   imagenModeEdit: 'archivo' | 'url' = 'archivo';
   imagenUrlCrear = '';
   imagenUrlEdit = '';
+  imagenPreviewErrorCrear = false;
+  imagenPreviewErrorEdit = false;
+  imagenPreviewTokenCrear = 0;
+  imagenPreviewTokenEdit = 0;
   pensumArchivo: File | null = null;
   eventoRecienCreado: EventoDTO | null = null;
   showQrDifusionModal = false;
@@ -146,6 +161,8 @@ export class Eventos implements OnInit {
   campoOpcionDraftCrear: Record<number, string> = {};
   campoOpcionDraftEdit: Record<number, string> = {};
 
+  private readonly route = inject(ActivatedRoute);
+
   constructor(
     public authService: AuthService,
     private eventoService: EventoService,
@@ -167,9 +184,21 @@ export class Eventos implements OnInit {
     this.sincronizarSignalsTipoEvento();
     this.sincronizarValidadoresModalidad(this.createForm);
     this.sincronizarValidadoresModalidad(this.editForm);
-    if (this.authService.isStaff()) {
+    if (this.authService.isAdmin()) {
       this.loadDashboardData();
     }
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      if (params.get('crear') === '1' && this.puedeCrearEditar && !this.showCreateModal) {
+        this.openCreateModal();
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { crear: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      }
+    });
   }
 
   /** Por si `valueChanges` no dispara la vista en algún entorno, el `change` nativo fuerza el signal. */
@@ -277,6 +306,9 @@ export class Eventos implements OnInit {
   }
 
   loadDashboardData(): void {
+    if (!this.authService.isAdmin()) {
+      return;
+    }
     this.loading = true;
     this.errorMsg = null;
     const v = this.filterForm.value;
@@ -362,6 +394,8 @@ export class Eventos implements OnInit {
     this.imagenArchivo = null;
     this.imagenModeCrear = 'archivo';
     this.imagenUrlCrear = '';
+    this.imagenPreviewErrorCrear = false;
+    this.imagenPreviewErrorEdit = false;
     this.pensumArchivo = null;
     this.createForm.reset({
       nombreEvento: '',
@@ -395,7 +429,29 @@ export class Eventos implements OnInit {
     this.intentoEnvioForm = false;
     this.aplicarValidadoresPorTipo(this.createForm, null);
     this.aplicarValidadoresModalidad(this.createForm, null);
+    this.imagenPreviewTokenCrear = 0;
+    this.cambiarImagenModoCrear('archivo');
+    this.prellenarProfesorLiderSiAplica();
     this.showCreateModal = true;
+  }
+
+  private prellenarProfesorLiderSiAplica(): void {
+    if (!this.authService.isProfesor() || this.authService.isAdmin()) {
+      return;
+    }
+    const u = this.authService.getUsuario();
+    if (!u) {
+      return;
+    }
+    const staff: UsuarioStaffDTO = {
+      idUsuario: u.idUsuario,
+      nombres: u.nombres,
+      apellidos: u.apellidos,
+      correo: u.correo,
+      numeroDocumento: u.numeroDocumento,
+      codigoRol: 'ROLE_PROFESOR',
+    };
+    this.profesorLiderSeleccionado = [staff];
   }
 
   onImagenSelected(ev: Event): void {
@@ -418,19 +474,72 @@ export class Eventos implements OnInit {
 
   cambiarImagenModoCrear(modo: 'archivo' | 'url'): void {
     this.imagenModeCrear = modo;
+    this.imagenPreviewErrorCrear = false;
     if (modo === 'url') {
       this.imagenArchivo = null;
     } else {
       this.imagenUrlCrear = '';
       this.createForm.patchValue({ imagenPromocionalUrl: '' }, { emitEvent: false });
     }
+    this.sincronizarValidadoresImagenUrl(this.createForm, modo);
   }
 
   cambiarImagenModoEdit(modo: 'archivo' | 'url'): void {
     this.imagenModeEdit = modo;
+    this.imagenPreviewErrorEdit = false;
     if (modo === 'archivo') {
       this.imagenUrlEdit = '';
       this.editForm.patchValue({ imagenPromocionalUrl: '' }, { emitEvent: false });
+    }
+    this.sincronizarValidadoresImagenUrl(this.editForm, modo);
+  }
+
+  private sincronizarValidadoresImagenUrl(form: FormGroup, modo: 'archivo' | 'url'): void {
+    const ctrl = form.get('imagenPromocionalUrl');
+    if (modo === 'url') {
+      ctrl?.setValidators([urlImagenPromocionalValidator()]);
+    } else {
+      ctrl?.clearValidators();
+    }
+    ctrl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  previewImagenCrearUrl(): string | null {
+    if (this.imagenModeCrear !== 'url') {
+      return null;
+    }
+    return resolverUrlImagenEvento(this.createForm.get('imagenPromocionalUrl')?.value);
+  }
+
+  previewImagenEditUrl(): string | null {
+    if (this.imagenModeEdit !== 'url') {
+      return null;
+    }
+    return resolverUrlImagenEvento(this.editForm.get('imagenPromocionalUrl')?.value);
+  }
+
+  resolverUrlImagenEditActual(): string | null {
+    const desdeForm = this.editForm.get('imagenPromocionalUrl')?.value;
+    const desdeEvento =
+      this.editing?.rutaImagenPromocional ?? this.editing?.imagenPromocionalUrl ?? null;
+    return resolverUrlImagenEvento(desdeForm || desdeEvento);
+  }
+
+  onImagenUrlInput(modo: 'crear' | 'edit'): void {
+    if (modo === 'crear') {
+      this.imagenPreviewErrorCrear = false;
+      this.imagenPreviewTokenCrear++;
+    } else {
+      this.imagenPreviewErrorEdit = false;
+      this.imagenPreviewTokenEdit++;
+    }
+  }
+
+  onPreviewImagenError(modo: 'crear' | 'edit'): void {
+    if (modo === 'crear') {
+      this.imagenPreviewErrorCrear = true;
+    } else {
+      this.imagenPreviewErrorEdit = true;
     }
   }
 
@@ -492,6 +601,7 @@ export class Eventos implements OnInit {
         });
         this.aplicarValidadoresPorTipo(this.editForm, full.tipoEvento);
         this.aplicarValidadoresModalidad(this.editForm, full.modalidad);
+        this.sincronizarValidadoresImagenUrl(this.editForm, this.imagenModeEdit);
         this.tipoEditSig.set(full.tipoEvento);
         this.showEditModal = true;
       },
@@ -585,7 +695,7 @@ export class Eventos implements OnInit {
       idProfesorLider: this.idProfesorLiderDesdeSeleccion(this.profesorLiderSeleccionado)!,
       imagenPromocionalUrl:
         this.imagenModeCrear === 'url'
-          ? (raw.imagenPromocionalUrl?.trim() || null)
+          ? normalizarUrlImagenParaGuardar(raw.imagenPromocionalUrl)
           : null,
       idsProfesoresColaboradores: this.idsStaffUnicos(this.profesoresSeleccionados),
       idsMonitoresAsignados: this.idsStaffUnicos(this.monitoresSeleccionados),
@@ -673,7 +783,7 @@ export class Eventos implements OnInit {
       idProfesorLider: this.idProfesorLiderDesdeSeleccion(this.profesorLiderSeleccionadoEdit),
       imagenPromocionalUrl:
         this.imagenModeEdit === 'url'
-          ? (raw.imagenPromocionalUrl?.trim() || null)
+          ? normalizarUrlImagenParaGuardar(raw.imagenPromocionalUrl)
           : null,
       estado: raw.estado,
       idUsuarioCreador: this.editing.idUsuarioCreador,
@@ -880,7 +990,7 @@ export class Eventos implements OnInit {
         precio: [0, [Validators.required, Validators.min(0)]],
         textoDiploma: [''],
         firmaDigitalProfesor: [''],
-        imagenPromocionalUrl: ['', [Validators.maxLength(10000), urlFlexibleValidator()]],
+        imagenPromocionalUrl: [''],
         nivelAcademico: [null as NivelAcademico | null],
         notaMinimaAprobacion: [null as number | null],
         porcentajeAsistenciaMinimo: [80, [Validators.required, Validators.min(1), Validators.max(100)]],
@@ -1284,6 +1394,7 @@ export class Eventos implements OnInit {
       fechaFin: 'Fecha de fin',
       ubicacion: 'Ubicación',
       enlaceVirtual: 'Enlace virtual',
+      imagenPromocionalUrl: 'URL del banner promocional',
       aforoMaximo: 'Aforo máximo',
       intensidadHoraria: 'Intensidad horaria',
       precio: 'Precio',

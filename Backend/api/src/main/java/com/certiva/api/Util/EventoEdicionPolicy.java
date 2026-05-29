@@ -79,12 +79,29 @@ public final class EventoEdicionPolicy {
     }
 
     public static boolean esAdminAutenticado() {
+        return tieneRol("ROLE_ADMIN");
+    }
+
+    public static boolean esProfesorAutenticado() {
+        return tieneRol("ROLE_PROFESOR");
+    }
+
+    /** Admin u organizador académico que propone eventos globales. */
+    public static boolean puedeCrearEventoGlobal() {
+        return esAdminAutenticado() || esProfesorAutenticado();
+    }
+
+    public static boolean puedeEditarConfiguracionGlobal() {
+        return puedeCrearEventoGlobal();
+    }
+
+    private static boolean tieneRol(String rol) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
             return false;
         }
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch("ROLE_ADMIN"::equals);
+                .anyMatch(rol::equals);
     }
 }

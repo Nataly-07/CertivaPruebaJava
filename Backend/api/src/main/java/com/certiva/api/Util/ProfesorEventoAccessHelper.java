@@ -21,12 +21,14 @@ public final class ProfesorEventoAccessHelper {
             throw new OperacionNoPermitidaException("No se pudo identificar al usuario.");
         }
         Long id = profesor.getIdUsuario();
+        boolean lider = evento.getUsuarioCreador() != null
+                && id.equals(evento.getUsuarioCreador().getIdUsuario());
         boolean colaborador = evento.getProfesoresColaboradores() != null
                 && evento.getProfesoresColaboradores().stream()
                         .anyMatch(p -> id.equals(p.getIdUsuario()));
-        if (!colaborador) {
+        if (!lider && !colaborador) {
             throw new OperacionNoPermitidaException(
-                    "No está asignado como profesor colaborador de este evento. "
+                    "No está asignado como profesor líder o colaborador de este evento. "
                             + "Solicite al organizador que lo vincule al evento.");
         }
     }

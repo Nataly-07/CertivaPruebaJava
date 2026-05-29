@@ -33,6 +33,7 @@ import com.certiva.api.DTO.EventoContenidoAcademicoDTO;
 import com.certiva.api.DTO.GuardarEventoContenidoAcademicoDTO;
 import com.certiva.api.DTO.GuardarRevisionEvaluacionesDTO;
 import com.certiva.api.DTO.ProfesorParticipanteDTO;
+import com.certiva.api.DTO.MonitorPanelDTO;
 import com.certiva.api.DTO.ProfesorPanelDTO;
 import com.certiva.api.DTO.ReasignarStaffDTO;
 import com.certiva.api.Service.EventoCicloVidaService;
@@ -67,6 +68,11 @@ public class EventoController {
     @GetMapping("/mi-panel")
     public ResponseEntity<ProfesorPanelDTO> panelProfesor() {
         return ResponseEntity.ok(_eventoService.obtenerPanelProfesor());
+    }
+
+    @GetMapping("/mi-panel-monitor")
+    public ResponseEntity<MonitorPanelDTO> panelMonitor() {
+        return ResponseEntity.ok(_eventoService.obtenerPanelMonitor());
     }
 
     @GetMapping("/mi-panel/revision/{id}")
@@ -176,6 +182,12 @@ public class EventoController {
 
     @PostMapping("/{id}/cerrar-y-certificar")
     public ResponseEntity<EventoCierreResultadoDTO> cerrarYCertificar(@PathVariable Long id) {
+        return ResponseEntity.ok(_eventoCicloVidaService.cerrarEventoYCertificar(id));
+    }
+
+    /** Alias semántico para clausura inmutable desde el panel del profesor. */
+    @PostMapping("/{id}/clausurar")
+    public ResponseEntity<EventoCierreResultadoDTO> clausurar(@PathVariable Long id) {
         return ResponseEntity.ok(_eventoCicloVidaService.cerrarEventoYCertificar(id));
     }
 

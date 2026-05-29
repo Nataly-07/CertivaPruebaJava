@@ -1,6 +1,10 @@
 <div class="checkin-wrap">
   <div class="checkin-card glass-card">
-    <a routerLink="/admin/eventos" class="back-link">← Volver al panel</a>
+    @if (authService.isMonitor() && !authService.isAdmin()) {
+      <a routerLink="/monitor/dashboard" class="back-link">← Volver al panel</a>
+    } @else {
+      <a routerLink="/admin/eventos" class="back-link">← Volver al panel</a>
+    }
     <h1 class="checkin-title">Check-in por QR</h1>
     <p class="checkin-lead">
       Active la cámara para escanear el pase del estudiante o ingrese la URL

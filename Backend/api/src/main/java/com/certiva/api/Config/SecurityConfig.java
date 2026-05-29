@@ -68,6 +68,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/inscripciones/*/cancelar").hasRole("ESTUDIANTE")
                 .requestMatchers(HttpMethod.PATCH, "/api/usuarios/mi-perfil/telefono").hasRole("ESTUDIANTE")
                 .requestMatchers("/api/certificados/mis/**").hasRole("ESTUDIANTE")
+                .requestMatchers(HttpMethod.GET, "/api/eventos/mi-panel-monitor").hasAnyRole("ADMIN", "MONITOR")
+                .requestMatchers(HttpMethod.GET, "/api/eventos/mi-panel/*/asistencia-en-vivo")
+                    .hasAnyRole("ADMIN", "PROFESOR", "MONITOR")
                 .requestMatchers(HttpMethod.GET, "/api/eventos/mi-panel/**").hasAnyRole("ADMIN", "PROFESOR")
                 .requestMatchers(HttpMethod.PUT, "/api/eventos/mi-panel/**").hasAnyRole("ADMIN", "PROFESOR")
                 .requestMatchers(HttpMethod.POST, "/api/attendance/manual-checkin")
@@ -80,12 +83,13 @@ public class SecurityConfig {
                     .hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST,
                         "/api/eventos/*/iniciar-revision",
-                        "/api/eventos/*/cerrar-y-certificar")
+                        "/api/eventos/*/cerrar-y-certificar",
+                        "/api/eventos/*/clausurar")
                     .hasAnyRole("ADMIN", "PROFESOR")
 
                 .requestMatchers(HttpMethod.GET, "/api/eventos/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/eventos").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/eventos/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/eventos").hasAnyRole("ADMIN", "PROFESOR")
+                .requestMatchers(HttpMethod.PUT, "/api/eventos/**").hasAnyRole("ADMIN", "PROFESOR")
                 .requestMatchers(HttpMethod.DELETE, "/api/eventos/**").hasRole("ADMIN")
 
                 .requestMatchers("/api/usuarios/**").hasAnyRole("ADMIN", "PROFESOR", "MONITOR")

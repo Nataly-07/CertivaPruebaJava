@@ -87,6 +87,7 @@ public abstract class Evento {
     @Column(name = "porcentaje_asistencia_minimo")
     private Integer porcentajeAsistenciaMinimo = 80;
 
+    /** URL externa o ruta relativa bajo uploads/; TEXT para URLs largas (CDN, S3, Google, etc.). */
     @Column(name = "imagen_promocional", columnDefinition = "TEXT")
     private String rutaImagenPromocional;
 

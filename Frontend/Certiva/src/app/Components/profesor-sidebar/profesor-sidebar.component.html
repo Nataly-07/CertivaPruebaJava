@@ -1,34 +1,51 @@
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-logo">
-      <img src="Images/image-removebg-preview.png" alt="Certiva" />
-      @if (!collapsed) { <span class="logo-text">Certiva</span> }
+<aside class="prof-sidebar" [class.collapsed]="collapsed">
+  <div class="prof-sidebar__head">
+    <div class="prof-sidebar__logo">
+      <span class="prof-sidebar__logo-mark">C</span>
+      @if (!collapsed) {
+        <span class="prof-sidebar__logo-text">Certiva</span>
+      }
     </div>
-    <button type="button" class="sidebar-toggle" (click)="toggle()">☰</button>
+    <button type="button" class="prof-sidebar__toggle" (click)="toggle()" aria-label="Menú">
+      <i class="bi bi-list" aria-hidden="true"></i>
+    </button>
   </div>
-  <nav class="sidebar-nav">
-    <a routerLink="/admin/mi-panel" routerLinkActive="active" class="nav-item">
-      @if (!collapsed) { <span>Mi panel / Mis cursos</span> } @else { <span>◆</span> }
+
+  <nav class="prof-sidebar__nav">
+    <a routerLink="/profesor/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="prof-sidebar__link">
+      <i class="bi bi-grid-1x2 prof-sidebar__icon" aria-hidden="true"></i>
+      @if (!collapsed) { <span>Panel</span> }
     </a>
-    <a routerLink="/admin/mi-panel" routerLinkActive="active" class="nav-item">
-      @if (!collapsed) { <span>Contenido y evaluación</span> }
+    <a routerLink="/profesor/cursos" routerLinkActive="active" class="prof-sidebar__link">
+      <i class="bi bi-journal-bookmark prof-sidebar__icon" aria-hidden="true"></i>
+      @if (!collapsed) { <span>Mis cursos</span> }
     </a>
-    <a routerLink="/admin/check-in" routerLinkActive="active" class="nav-item">
+    <a routerLink="/profesor/historial" routerLinkActive="active" class="prof-sidebar__link">
+      <i class="bi bi-clock-history prof-sidebar__icon" aria-hidden="true"></i>
+      @if (!collapsed) { <span>Historial</span> }
+    </a>
+    <a routerLink="/admin/eventos" routerLinkActive="active" class="prof-sidebar__link">
+      <i class="bi bi-plus-circle prof-sidebar__icon" aria-hidden="true"></i>
+      @if (!collapsed) { <span>Proponer evento</span> }
+    </a>
+    <a routerLink="/admin/check-in" routerLinkActive="active" class="prof-sidebar__link">
+      <i class="bi bi-qr-code-scan prof-sidebar__icon" aria-hidden="true"></i>
       @if (!collapsed) { <span>Check-in QR</span> }
     </a>
   </nav>
-  <div class="sidebar-footer">
-    @if (usuario) {
-      <div class="user-info">
-        <div class="user-avatar">{{ usuario.nombres.charAt(0) }}{{ usuario.apellidos.charAt(0) }}</div>
-        @if (!collapsed) {
-          <div class="user-details">
-            <span class="user-name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
-            <span class="user-role">Profesor</span>
-          </div>
-        }
+
+  <div class="prof-sidebar__foot">
+    @if (usuario && !collapsed) {
+      <div class="prof-sidebar__user">
+        <div class="prof-sidebar__avatar">{{ usuario.nombres.charAt(0) }}{{ usuario.apellidos.charAt(0) }}</div>
+        <div>
+          <span class="prof-sidebar__user-name">{{ usuario.nombres }}</span>
+          <span class="prof-sidebar__user-role">Profesor</span>
+        </div>
       </div>
     }
-    <button type="button" class="logout-btn" (click)="logout()" title="Salir">⎋</button>
+    <button type="button" class="prof-sidebar__logout" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
+      <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+    </button>
   </div>
 </aside>

@@ -54,7 +54,7 @@
         }
       </a>
       @if (authService.isProfesor() && !authService.isAdmin()) {
-        <a routerLink="/admin/mi-panel" routerLinkActive="active" class="nav-item">
+        <a routerLink="/profesor/dashboard" routerLinkActive="active" class="nav-item">
           @if (!sidebarCollapsed) { <span>Mi panel</span> }
         </a>
       }

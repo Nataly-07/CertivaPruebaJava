@@ -71,14 +71,35 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
   },
   {
-    path: 'admin/mi-panel',
-    loadComponent: () => import('./pages/administracion/mi-panel/mi-panel').then(m => m.MiPanel),
+    path: 'profesor/dashboard',
+    loadComponent: () =>
+      import('./pages/profesor/dashboard/profesor-dashboard').then(m => m.ProfesorDashboard),
     canActivate: [authGuard, profesorGuard],
+    data: { vista: 'dashboard' },
+  },
+  {
+    path: 'profesor/cursos',
+    loadComponent: () =>
+      import('./pages/profesor/dashboard/profesor-dashboard').then(m => m.ProfesorDashboard),
+    canActivate: [authGuard, profesorGuard],
+    data: { vista: 'cursos' },
+  },
+  {
+    path: 'profesor/historial',
+    loadComponent: () =>
+      import('./pages/profesor/dashboard/profesor-dashboard').then(m => m.ProfesorDashboard),
+    canActivate: [authGuard, profesorGuard],
+    data: { vista: 'historial' },
+  },
+  {
+    path: 'admin/mi-panel',
+    redirectTo: '/profesor/dashboard',
+    pathMatch: 'full',
   },
   {
     path: 'admin/eventos',
     loadComponent: () => import('./pages/administracion/eventos/eventos').then(m => m.Eventos),
-    canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard, profesorGuard],
   },
   {
     path: 'admin/usuarios',
@@ -89,6 +110,27 @@ export const routes: Routes = [
     path: 'admin/check-in',
     loadComponent: () => import('./pages/administracion/check-in/check-in').then(m => m.CheckIn),
     canActivate: [authGuard, checkInGuard],
+  },
+  {
+    path: 'monitor/dashboard',
+    loadComponent: () =>
+      import('./pages/monitor/dashboard/monitor-dashboard').then(m => m.MonitorDashboard),
+    canActivate: [authGuard, monitorGuard],
+    data: { vista: 'dashboard' },
+  },
+  {
+    path: 'monitor/hoy',
+    loadComponent: () =>
+      import('./pages/monitor/dashboard/monitor-dashboard').then(m => m.MonitorDashboard),
+    canActivate: [authGuard, monitorGuard],
+    data: { vista: 'hoy' },
+  },
+  {
+    path: 'monitor/reportes',
+    loadComponent: () =>
+      import('./pages/monitor/dashboard/monitor-dashboard').then(m => m.MonitorDashboard),
+    canActivate: [authGuard, monitorGuard],
+    data: { vista: 'reportes' },
   },
   {
     path: 'monitor/checkin',

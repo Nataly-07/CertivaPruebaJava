@@ -21,6 +21,9 @@ public class ProfesorPanelDTO {
     private long eventosPorCertificar;
     private long accionesPendientes;
 
+    /** Promedio de asistencia global entre cursos activos (0–100). */
+    private int asistenciaGlobalPromedio;
+
     private ProfesorPanelBannerDTO banner;
 
     @Builder.Default

@@ -55,6 +55,45 @@ export interface ProfesorEventoTarjetaDTO {
   monitorNombre?: string;
   monitorApellidos?: string;
   requiereIniciarRevision?: boolean;
+  sesionesTotales?: number;
+  sesionActual?: number;
+  porcentajeAsistenciaMinimo?: number;
+  listoParaClausurar?: boolean;
+}
+
+export type MonitorNivelAlerta = 'NORMAL' | 'ADVERTENCIA' | 'CRITICO';
+
+export interface MonitorEventoTarjetaDTO {
+  idEvento: number;
+  nombreEvento: string;
+  tipoEvento?: string;
+  ubicacion?: string;
+  estadoOperativo?: EstadoOperativoEvento;
+  nivelAlerta?: MonitorNivelAlerta;
+  inscritosActivos: number;
+  asistenciasConfirmadas: number;
+  porcentajeCheckIn: number;
+  sesionesTotales?: number;
+  sesionActual?: number;
+  minutosHastaFin?: number | null;
+  profesorNombre?: string;
+  profesorApellidos?: string;
+  profesorCorreo?: string;
+  fechaInicio?: string;
+  fechaFin?: string;
+  permiteAbrirCheckIn?: boolean;
+  sesionHoy?: boolean;
+}
+
+export interface MonitorPanelDTO {
+  eventosHoy: number;
+  salonesOcupados: number;
+  salonesTotales: number;
+  checkInConfirmados: number;
+  checkInEsperados: number;
+  alertasCriticas: number;
+  alertasAdvertencia: number;
+  eventos: MonitorEventoTarjetaDTO[];
 }
 
 export interface ProfesorPanelDTO {
@@ -63,6 +102,7 @@ export interface ProfesorPanelDTO {
   eventosActivos: number;
   eventosPorCertificar: number;
   accionesPendientes: number;
+  asistenciaGlobalPromedio?: number;
   banner: ProfesorPanelBannerDTO;
   enCurso: ProfesorEventoTarjetaDTO[];
   pendientesCierre: ProfesorEventoTarjetaDTO[];
@@ -131,6 +171,10 @@ export interface EventoAsistenciaEnVivoDTO {
   asistenciasConfirmadas: number;
   porcentajeAsistenciaGlobal: number;
   asistenciaPromedioSesionHoy?: number;
+  sesionesTotales?: number;
+  sesionActual?: number;
+  porcentajeAsistenciaMinimo?: number;
+  listoParaClausurar?: boolean;
   alumnos: ProfesorAlumnoAsistenciaDTO[];
 }
 

@@ -28,6 +28,32 @@ public final class ProfesorAsistenciaHelper {
         return Math.min(100, Math.round((asistenciasConfirmadas * 100f) / inscritosActivos));
     }
 
+    /** Total de sesiones/clases del evento (Y en «Clase X de Y»). */
+    public static int sesionesTotales(Evento evento) {
+        return calcularSesionesTotales(evento);
+    }
+
+    /** Sesión actual del ciclo (X), estimada por calendario mientras el evento está activo. */
+    public static int sesionActualEvento(Evento evento, LocalDateTime ahora) {
+        int total = calcularSesionesTotales(evento);
+        if (evento.getFechaInicio() == null || evento.getFechaFin() == null) {
+            return 0;
+        }
+        if (ahora.isBefore(evento.getFechaInicio())) {
+            return 0;
+        }
+        if (!ahora.isBefore(evento.getFechaFin())) {
+            return total;
+        }
+        long totalMs = Duration.between(evento.getFechaInicio(), evento.getFechaFin()).toMillis();
+        if (totalMs <= 0) {
+            return 0;
+        }
+        long elapsedMs = Duration.between(evento.getFechaInicio(), ahora).toMillis();
+        int estimado = (int) Math.round((elapsedMs * (double) total) / totalMs);
+        return Math.max(1, Math.min(total, estimado));
+    }
+
     private static int calcularSesionesTotales(Evento evento) {
         if (evento.getIntensidadHoraria() != null && evento.getIntensidadHoraria() > 0) {
             return Math.max(1, (int) Math.ceil(evento.getIntensidadHoraria() / 4.0));

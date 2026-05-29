@@ -1,0 +1,228 @@
+<div class="mon-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-monitor-sidebar [collapsed]="sidebarCollapsed" (collapsedChange)="sidebarCollapsed = $event" />
+
+  <main class="mon-main">
+    <header class="mon-header">
+      <div class="mon-header__text">
+        <span class="mon-header__kicker">Monitor's Dashboard</span>
+        <h1 class="mon-header__title">Certiva: Monitor {{ nombreMonitor() }}</h1>
+        <p class="mon-header__welcome">Bienvenido, {{ nombreMonitor() }}</p>
+        <span class="mon-header__badge">
+          <i class="bi bi-broadcast" aria-hidden="true"></i>
+          Central Command
+        </span>
+      </div>
+      <div class="mon-header__actions">
+        <button type="button" class="btn btn-cyan-outline btn-sm btn-with-icon" (click)="recargarPanel()">
+          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+          <span>Actualizar</span>
+        </button>
+      </div>
+    </header>
+
+    @if (loading()) {
+      <p class="mon-loading">Cargando panel operativo…</p>
+    } @else if (errorMsg()) {
+      <div class="mon-alert mon-alert--warn">{{ errorMsg() }}</div>
+    } @else if (vista() === 'reportes') {
+      <section class="mon-reportes-placeholder">
+        <i class="bi bi-bar-chart-steps" aria-hidden="true"></i>
+        <h2>Reportes operativos</h2>
+        <p>Esta sección estará disponible en una próxima iteración.</p>
+        <a routerLink="/monitor/dashboard" class="btn btn-cyan btn-sm">Volver al panel</a>
+      </section>
+    } @else if (panel(); as p) {
+      @if (accionMsg()) {
+        <div class="mon-alert mon-alert--info">{{ accionMsg() }}</div>
+      }
+
+      <section class="mon-kpi-row" aria-label="Indicadores operativos">
+        <article class="mon-kpi mon-kpi--cyan">
+          <div class="mon-kpi__icon">
+            <i class="bi bi-calendar3" aria-hidden="true"></i>
+          </div>
+          <div>
+            <span class="mon-kpi__value">{{ p.eventosHoy | number: '2.0-0' }}</span>
+            <span class="mon-kpi__label">Eventos de hoy</span>
+          </div>
+        </article>
+        <article class="mon-kpi mon-kpi--blue">
+          <div class="mon-kpi__icon">
+            <i class="bi bi-people" aria-hidden="true"></i>
+          </div>
+          <div>
+            <span class="mon-kpi__value">{{ p.checkInConfirmados }} / {{ p.checkInEsperados }}</span>
+            <span class="mon-kpi__label">Check-in hoy</span>
+          </div>
+        </article>
+        <article class="mon-kpi mon-kpi--purple">
+          <div class="mon-kpi__icon">
+            <i class="bi bi-door-open" aria-hidden="true"></i>
+          </div>
+          <div>
+            <span class="mon-kpi__value">{{ p.salonesOcupados | number: '2.0-0' }} / {{ p.salonesTotales | number: '2.0-0' }}</span>
+            <span class="mon-kpi__label">Salones ocupados</span>
+          </div>
+        </article>
+        <article class="mon-kpi mon-kpi--red">
+          <div class="mon-kpi__icon">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+          </div>
+          <div>
+            <span class="mon-kpi__value">{{ p.alertasCriticas | number: '2.0-0' }}</span>
+            <span class="mon-kpi__label">Alertas críticas</span>
+            @if (p.alertasAdvertencia > 0) {
+              <span class="mon-kpi__sub">{{ p.alertasAdvertencia }} en advertencia</span>
+            }
+          </div>
+        </article>
+      </section>
+
+      <section class="mon-eventos-panel">
+        <header class="mon-eventos-panel__head">
+          <h2>{{ tituloSeccion() }}</h2>
+          <span class="mon-live">
+            <span class="mon-live__dot"></span>
+            En vivo
+          </span>
+        </header>
+
+        @if (eventosVisibles().length === 0) {
+          <p class="mon-empty">No hay eventos asignados para hoy. Verifique con el administrador su asignación en el evento.</p>
+        } @else {
+          <div class="mon-eventos-list">
+            @for (ev of eventosVisibles(); track ev.idEvento) {
+              <article class="mon-evento" [ngClass]="claseTarjeta(ev)">
+                <div class="mon-evento__main">
+                  <div class="mon-evento__icon-wrap">
+                    <i class="bi bi-journal-richtext" aria-hidden="true"></i>
+                  </div>
+                  <div class="mon-evento__info">
+                    <h3 class="mon-evento__titulo">
+                      {{ ev.nombreEvento }}
+                      <span class="mon-evento__salon">({{ textoSalon(ev) }})</span>
+                    </h3>
+                    <p class="mon-evento__meta">{{ textoProgreso(ev) }}</p>
+                    <p class="mon-evento__profesor">
+                      <i class="bi bi-person-badge" aria-hidden="true"></i>
+                      {{ nombreProfesor(ev) }}
+                    </p>
+                    <div class="mon-evento__progress">
+                      <div
+                        class="mon-evento__progress-bar"
+                        [style.width.%]="ev.porcentajeCheckIn ?? 0"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mon-evento__status">
+                  <span class="mon-evento__estado" [ngClass]="claseBadgeEstado(ev)">
+                    {{ etiquetaEstado(ev.estadoOperativo) }}
+                  </span>
+                  @if (ev.nivelAlerta && ev.nivelAlerta !== 'NORMAL') {
+                    <span class="mon-evento__alerta mon-evento__alerta--{{ ev.nivelAlerta | lowercase }}">
+                      {{ etiquetaAlerta(ev.nivelAlerta) }}
+                    </span>
+                  }
+                  @if (textoTiempo(ev)) {
+                    <span class="mon-evento__tiempo">
+                      <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                      {{ textoTiempo(ev) }}
+                    </span>
+                  }
+                </div>
+
+                <div class="mon-evento__actions">
+                  <button type="button" class="btn btn-ghost btn-sm btn-with-icon" (click)="abrirMatriz(ev)">
+                    <i class="bi bi-table" aria-hidden="true"></i>
+                    <span>Ver matriz</span>
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm btn-with-icon" (click)="abrirMatriz(ev)">
+                    <i class="bi bi-list-check" aria-hidden="true"></i>
+                    <span>Auditar lista</span>
+                  </button>
+                  @if (ev.permiteAbrirCheckIn) {
+                    <button type="button" class="btn btn-warning-action btn-sm btn-with-icon" (click)="irCheckIn()">
+                      <i class="bi bi-qr-code-scan" aria-hidden="true"></i>
+                      <span>Abrir check-in</span>
+                    </button>
+                  }
+                  @if (ev.nivelAlerta === 'CRITICO') {
+                    <button type="button" class="btn btn-danger-action btn-sm btn-with-icon" (click)="contactarOrganizador(ev)">
+                      <i class="bi bi-telephone" aria-hidden="true"></i>
+                      <span>Contactar organizador</span>
+                    </button>
+                  } @else if (ev.estadoOperativo === 'PROXIMO') {
+                    <button type="button" class="btn btn-cyan btn-sm btn-with-icon" (click)="abrirMatriz(ev)">
+                      <i class="bi bi-eye" aria-hidden="true"></i>
+                      <span>Ver lista</span>
+                    </button>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (drawerAbierto()) {
+      <div class="mon-drawer-backdrop" (click)="cerrarDrawer()" role="presentation"></div>
+      <aside class="mon-drawer" aria-label="Matriz de asistencia">
+        <header class="mon-drawer__head">
+          <div>
+            <h2>{{ eventoSeleccionado()?.nombreEvento }}</h2>
+            <p class="mon-drawer__sub">Matriz QR · solo lectura</p>
+          </div>
+          <button type="button" class="mon-drawer__close" (click)="cerrarDrawer()" aria-label="Cerrar">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        @if (drawerCargando()) {
+          <p class="mon-loading">Cargando matriz…</p>
+        } @else if (matriz(); as m) {
+          <div class="mon-drawer__stats">
+            <span>Check-in: {{ m.asistenciasConfirmadas }}/{{ m.totalInscritos }}</span>
+            <span>Sesión {{ m.sesionActual }}/{{ m.sesionesTotales }}</span>
+            <span>{{ m.porcentajeAsistenciaGlobal }}% global</span>
+          </div>
+          <div class="mon-drawer__actions">
+            <button type="button" class="btn btn-cyan-outline btn-sm" (click)="refrescarMatriz()">Refrescar</button>
+            <button type="button" class="btn btn-warning-action btn-sm" (click)="irCheckIn()">Ir a check-in QR</button>
+          </div>
+          <div class="mon-drawer__table-wrap">
+            <table class="mon-drawer__table">
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  <th>Asistencia</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (al of m.alumnos; track al.idInscripcion) {
+                  <tr [class.elegible]="esElegible(al)">
+                    <td>
+                      <strong>{{ al.nombres }} {{ al.apellidos }}</strong>
+                      <span class="mon-drawer__correo">{{ al.correo }}</span>
+                    </td>
+                    <td>
+                      @if (al.asistenciaConfirmada) {
+                        <span class="pill pill--ok">Confirmada</span>
+                      } @else {
+                        <span class="pill pill--pending">Pendiente</span>
+                      }
+                    </td>
+                    <td>{{ al.porcentajeAsistencia }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </aside>
+    }
+  </main>
+</div>

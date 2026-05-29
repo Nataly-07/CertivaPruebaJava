@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { EventoDTO, EventoCupoVerificacionDTO, UsuarioStaffDTO } from '../../Models/evento-dto';
@@ -14,7 +14,7 @@ import { resolverUrlImagenEvento, placeholderGradienteTipo } from '../../utils/e
   templateUrl: './event-card.component.html',
   styleUrl: './event-card.component.scss',
 })
-export class EventCardComponent {
+export class EventCardComponent implements OnChanges {
   private router = inject(Router);
 
   @Input({ required: true }) evento!: EventoDTO;
@@ -48,8 +48,25 @@ export class EventCardComponent {
     return map[modalidad] ?? 'bi-calendar-event';
   }
 
+  imagenFallida = false;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['evento']) {
+      this.imagenFallida = false;
+    }
+  }
+
   imagenUrl(): string | null {
-    return resolverUrlImagenEvento(this.evento.rutaImagenPromocional);
+    if (this.imagenFallida) {
+      return null;
+    }
+    return resolverUrlImagenEvento(
+      this.evento.rutaImagenPromocional ?? this.evento.imagenPromocionalUrl,
+    );
+  }
+
+  onImagenError(): void {
+    this.imagenFallida = true;
   }
 
   placeholderGradient(): string {

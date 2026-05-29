@@ -9,7 +9,14 @@
 >
   <div class="event-card__media">
     @if (imagenUrl(); as src) {
-      <img [src]="src" [alt]="evento.nombreEvento" class="event-card__img" loading="lazy" />
+      <img
+        [src]="src"
+        [alt]="evento.nombreEvento"
+        class="event-card__img"
+        loading="lazy"
+        referrerpolicy="no-referrer"
+        (error)="onImagenError()"
+      />
     } @else {
       <div class="event-card__placeholder" [style.background]="placeholderGradient()"></div>
     }
